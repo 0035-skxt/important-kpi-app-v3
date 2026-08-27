@@ -1,0 +1,43 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:          # 手動再実行の口を残す
+
+permissions:                  # deploy-pages が要求する最小構成
+  contents: read
+  pages: write
+  id-token: write             # OIDC。Pages デプロイ以外に使い回さない
+
+concurrency:                  # 同時デプロイを直列化
+  group: pages
+  cancel-in-progress: false   # 反映中の打ち切りでデプロイ状態を壊さないため false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install, build, and upload
+        uses: withastro/action@v6
+        with:
+          path: .
+          build-cmd: pnpm run build
+          # package-manager は指定しない。lockfile から自動検出される。
+          #   バージョンは package.json の packageManager フィールドを唯一の出所とする。
+          # node-version も指定しない。action の既定が 24 で engines.node と矛盾しない。
+          #   固定が必要になったら engines と同時に上げる。
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v5

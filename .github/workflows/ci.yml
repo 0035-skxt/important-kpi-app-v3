@@ -1,0 +1,39 @@
+name: CI
+
+# プルリクエスト時のビルド検証。公開先の設定を入れた状態でビルドが通るかだけを見る。
+# 公開はしない（デプロイは deploy.yml の main への push だけが行う）。
+# 絶対パス直書きの検出は build スクリプトに繋いであるため、この一本で両方が走る。
+on:
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:                  # 同じ PR への連続 push は最後の1回だけ
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        # version は指定しない。package.json の packageManager フィールドが唯一の出所。
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24    # withastro/action の既定に合わせる
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm run build
