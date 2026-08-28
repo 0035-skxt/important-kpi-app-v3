@@ -1,4 +1,5 @@
 ---
+import BoardComponentPlaceholder from './BoardComponentPlaceholder.astro';
 import { boardDateId, boardStatusId, type KpiBoardItem } from '../lib/facility-board';
 
 type Props = {
@@ -10,17 +11,27 @@ type Props = {
 const { sourceId, label, items } = Astro.props;
 
 /*
- * 主指標（病床利用率）と、それ以外のカードを分けて持つ。
- * 前者が1列目、後者が2列目になる。
+ * 主指標（病床利用率）が1列目、指標一覧が2列目になる。
+ * 指標一覧には主指標も並べ、今どれを1列目に出しているかを選択状態で示す。
+ * 一覧から抜くと、左右で何が対応しているのかが読み手に伝わらない。
  */
 const primaryItem = items.find((item) => item.isPrimary);
-const cardItems = items.filter((item) => !item.isPrimary);
+const cardItems = items;
 const tabbed = primaryItem !== undefined;
 
 const primaryPaneId = `${sourceId}-pane-primary`;
 const cardsPaneId = `${sourceId}-pane-cards`;
 const primaryTabId = `${sourceId}-tab-primary`;
 const cardsTabId = `${sourceId}-tab-cards`;
+
+// 日別/週別/月別セレクター（見た目のみ。データ連動は未実装）
+const periodDateId = `${sourceId}-period-date`;
+const periodGroupName = `${sourceId}-period`;
+const periodOptions = [
+	{ id: `${sourceId}-period-daily`, label: '日別' },
+	{ id: `${sourceId}-period-weekly`, label: '週別' },
+	{ id: `${sourceId}-period-monthly`, label: '月別' },
+];
 ---
 
 <section class:list={['kpi', { 'kpi--tabbed': tabbed }]} aria-live="polite">
@@ -28,75 +39,126 @@ const cardsTabId = `${sourceId}-tab-cards`;
 		<h1 class="label">{label}</h1>
 	</header>
 
-	{
-		tabbed && (
-			<div class="kpi-tabs" aria-label={`${label}の表示切り替え`}>
-				<button
-					id={primaryTabId}
-					class="kpi-tab"
-					type="button"
-					data-tab="primary"
-					aria-controls={primaryPaneId}
-				>
-					{primaryItem?.label}
-				</button>
-				<button id={cardsTabId} class="kpi-tab" type="button" data-tab="cards" aria-controls={cardsPaneId}>
-					指標一覧
-				</button>
-			</div>
-		)
-	}
-
-	<div class="kpi-body">
+	<div class="kpi-content quiet-scroll">
 		{
-			primaryItem && (
-				<div id={primaryPaneId} class="kpi-pane kpi-pane--primary">
-					<dl class="kpi-primary">
-						<dt>{primaryItem.label}</dt>
-						<dd id={primaryItem.id} class="value">
-							取得中...
-						</dd>
-					</dl>
-					{primaryItem.chart && (
-						<svg
-							id={primaryItem.chart.id}
-							class="trend-chart"
-							viewBox="0 0 320 120"
-							preserveAspectRatio="xMidYMid meet"
-							role="img"
-							aria-label={primaryItem.chart.ariaLabel}
-						/>
-					)}
+			tabbed && (
+				<div class="kpi-tabs" aria-label={`${label}の表示切り替え`}>
+					<button
+						id={primaryTabId}
+						class="kpi-tab"
+						type="button"
+						data-tab="primary"
+						aria-controls={primaryPaneId}
+					>
+						{primaryItem?.label}
+					</button>
+					<button id={cardsTabId} class="kpi-tab" type="button" data-tab="cards" aria-controls={cardsPaneId}>
+						指標一覧
+					</button>
 				</div>
 			)
 		}
 
-		<div id={cardsPaneId} class="kpi-pane kpi-pane--cards quiet-scroll">
-			<dl class="kpi-cards">
-				{
-					cardItems.map((item) => (
-						<div class="kpi-row">
-							<dt>{item.label}</dt>
-							<dd id={item.id}>取得中...</dd>
-							{item.chart && (
-								<svg
-									id={item.chart.id}
-									class="trend-chart"
-									viewBox="0 0 320 120"
-									preserveAspectRatio="xMidYMid meet"
-									role="img"
-									aria-label={item.chart.ariaLabel}
-								/>
-							)}
-						</div>
-					))
-				}
-			</dl>
+		<div class="kpi-body">
+			{
+				primaryItem && (
+					<div id={primaryPaneId} class="kpi-pane kpi-pane--primary">
+						<dl class="kpi-primary">
+							<dt>{primaryItem.label}</dt>
+							<dd id={primaryItem.id} class="value">
+								取得中...
+							</dd>
+						</dl>
+						{primaryItem.chart && (
+							<svg
+								id={primaryItem.chart.id}
+								class="trend-chart"
+								viewBox="0 0 320 120"
+								preserveAspectRatio="xMidYMid meet"
+								role="img"
+								aria-label={primaryItem.chart.ariaLabel}
+							/>
+						)}
+					</div>
+				)
+			}
+
+			<div id={cardsPaneId} class="kpi-pane kpi-pane--cards">
+				<BoardComponentPlaceholder label="お知らせ（施設｜法人）" fill={false} />
+
+				<div class="kpi-controls">
+					<label class="kpi-date" for={periodDateId}>
+						日付
+						<input type="date" id={periodDateId} class="kpi-date-input" />
+					</label>
+
+					<div class="kpi-period" role="radiogroup" aria-label="表示期間">
+						{
+							periodOptions.map((option, index) => (
+								<>
+									<input
+										type="radio"
+										id={option.id}
+										name={periodGroupName}
+										class="kpi-period-input"
+										checked={index === 0}
+									/>
+									<label for={option.id} class="kpi-period-label">
+										{option.label}
+									</label>
+								</>
+							))
+						}
+					</div>
+				</div>
+
+				<h2 class="kpi-cards-title">指標一覧</h2>
+
+				<dl class="kpi-cards">
+					{
+						cardItems.map((item) => {
+							/*
+							 * 1列目に出している指標は、この一覧にも同じ値で並ぶ。
+							 * id は文書内で1つしか置けないので、控えの側は data-kpi で拾わせる
+							 * （FacilityKpiDataLoader が両方に同じ文字列を書く）。
+							 * グラフも1列目にあるものが正本なので、控えには描かない。
+							 */
+							const isShownAsPrimary = item.id === primaryItem?.id;
+
+							return (
+								<div
+									class:list={['kpi-row', { 'kpi-row--selected': isShownAsPrimary }]}
+									aria-current={isShownAsPrimary ? 'true' : undefined}
+								>
+									<dt>{item.label}</dt>
+									{isShownAsPrimary ? (
+										<dd data-kpi={item.id}>取得中...</dd>
+									) : (
+										<dd id={item.id}>取得中...</dd>
+									)}
+									{!isShownAsPrimary && item.chart && (
+										<svg
+											id={item.chart.id}
+											class="trend-chart"
+											viewBox="0 0 320 120"
+											preserveAspectRatio="xMidYMid meet"
+											role="img"
+											aria-label={item.chart.ariaLabel}
+										/>
+									)}
+								</div>
+							);
+						})
+					}
+				</dl>
+			</div>
 		</div>
 	</div>
 
-	<p id={boardDateId(sourceId)} class="date">日付: --</p>
-	<p id={boardStatusId(sourceId)} class="status">APIから最新データを取得しています</p>
+	<footer class="kpi-foot">
+		<span id={boardDateId(sourceId)} class="date">日付: --</span>　　
+		<span id={boardStatusId(sourceId)} class="status">APIから最新データを取得しています</span>
+	</footer>
 </section>
 
 <script>
@@ -225,17 +287,35 @@ const cardsTabId = `${sourceId}-tab-cards`;
 		color: #526070;
 	}
 
+	/*
+	 * 上=見出し／中=コンテンツ／下=日付・状態、の3領域だと分かるよう、
+	 * 罫線は引かず、上下の余白差だけでゆるく区切る。
+	 * 見出しとフッターは高さぶんそのまま確保し、伸び縮みさせない。
+	 */
 	.kpi-head {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: baseline;
 		justify-content: flex-start;
 		gap: 4px 12px;
+		flex-shrink: 0;
+		padding-bottom: 8px;
 	}
 
 	.label {
 		font-size: 18px;
 		font-weight: 700;
+	}
+
+	/*
+	 * 見出しとフッターの間の全体。高さが足りない分はここだけが内部スクロールし、
+	 * 見出し・フッターは画面上/下に固定されたまま動かない。
+	 */
+	.kpi-content {
+		flex: 1 1 auto;
+		min-height: 0;
+		overflow-y: auto;
+		overscroll-behavior: contain;
 	}
 
 	/*
@@ -245,10 +325,7 @@ const cardsTabId = `${sourceId}-tab-cards`;
 	.kpi-body {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
-		flex: 1 1 auto;
-		min-height: 0;
 		gap: var(--panel-padding);
-		padding: var(--panel-padding);
 	}
 
 	.kpi-pane {
@@ -263,23 +340,160 @@ const cardsTabId = `${sourceId}-tab-cards`;
 		container-type: inline-size;
 	}
 
+	/* カードの列数をこの列の幅で決めるためのコンテナ。@container の基準になる */
+	.kpi-pane--cards {
+		container-type: inline-size;
+	}
+
 	.kpi-primary {
 		margin: 0;
 	}
 
+	/*
+	 * 日付・期間セレクター。今はUIのみで、値の変更はまだデータに連動しない。
+	 *
+	 * 指標を下まで送ると流れて見えなくなり「今どの日付を見ているのか」が分からなくなる。
+	 * 元の位置には置いたまま、スクロールで隠れる位置に来たらスクロール領域の上端に貼り付ける。
+	 * 貼り付いた状態では下の内容が透けるため、背景と左右の余白を自分で持つ。
+	 */
+	.kpi-controls {
+		position: sticky;
+		top: 0;
+		z-index: 1;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px 16px;
+		margin-bottom: var(--panel-padding);
+		background: #fafafa;
+		padding: 8px 0;
+	}
+
+	.kpi-date {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		color: #526070;
+		font-size: 14px;
+		font-weight: 700;
+	}
+
+	.kpi-date-input {
+		border: 1px solid #d8dde3;
+		border-radius: var(--panel-radius);
+		background: transparent;
+		padding: 6px 10px;
+		color: #0a0a0a;
+		font: inherit;
+		font-size: 14px;
+	}
+
+	.kpi-date-input:focus-visible {
+		outline: 2px solid #0a0a0a;
+		outline-offset: 2px;
+	}
+
+	.kpi-period {
+		display: inline-flex;
+		gap: 4px;
+	}
+
+	/* ラジオ自体は見せず、隣接する label をボタンとして操作する */
+	.kpi-period-input {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+		border: 0;
+	}
+
+	.kpi-period-label {
+		border: 1px solid #d8dde3;
+		border-radius: var(--panel-radius);
+		padding: 6px 12px;
+		color: #526070;
+		font-size: 14px;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.kpi-period-input:checked + .kpi-period-label {
+		border-color: #0a0a0a;
+		background: var(--panel-surface);
+		color: #0a0a0a;
+	}
+
+	.kpi-period-input:focus-visible + .kpi-period-label {
+		outline: 2px solid #0a0a0a;
+		outline-offset: 2px;
+	}
+
+	/*
+	 * 塗りの外側、その真上に置く見出し。
+	 * 狭い画面ではタブの「指標一覧」が同じ役目を果たすので出さない。
+	 * 両方出すと、選択中のタブのすぐ下に同じ文字が並んで重複して見える。
+	 */
+	.kpi-cards-title {
+		display: none;
+		margin: 0 0 8px;
+		color: #526070;
+		font-size: 16px;
+		font-weight: 700;
+		line-height: 1.4;
+	}
+
+	/*
+	 * 個々のカードではなく指標一覧の枠側に地の色を敷き、
+	 * カード自体は白に近い色にして枠から浮かせて見せる。
+	 */
 	.kpi-cards {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
+		grid-template-columns: minmax(0, 1fr);
 		align-items: start;
 		margin: 0;
 		gap: var(--panel-padding);
+		background: var(--panel-surface);
+		border-radius: var(--panel-radius);
+		padding: var(--panel-padding);
+	}
+
+	/*
+	 * 列数は画面幅ではなく指標一覧そのものの幅で決める。
+	 * 1列目との比が幅によって 1:2 と 1:1 で変わるため、
+	 * 同じ画面幅でもこの列の幅は一定しない。
+	 * 3列を上限にする。それ以上に割ると1枚が横に間延びして、
+	 * 見出しと数値が離れて読み取りにくくなる。
+	 */
+	@container (min-width: 280px) {
+		.kpi-cards {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@container (min-width: 620px) {
+		.kpi-cards {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
 	}
 
 	.kpi-row {
 		align-self: stretch;
-		background: var(--panel-surface);
+		background: #fdfdfd;
 		border-radius: var(--panel-radius);
 		padding: 12px 6px;
+	}
+
+	/*
+	 * 今どれを1列目に出しているかを示す。
+	 * border ではなく内側の影で描く。border だと2px ぶん中身がずれ、
+	 * 選択が移るたびにカードの高さと文字位置が動いてしまう。
+	 */
+	.kpi-row--selected {
+		box-shadow: inset 0 0 0 2px #0a0a0a;
 	}
 
 	dt {
@@ -355,15 +569,40 @@ const cardsTabId = `${sourceId}-tab-cards`;
 		}
 	}
 
+	/*
+	 * 2列に割るのは、タブが消えて両方を同時に見せる幅から。
+	 * 指標一覧は項目数が多く1枠あたりが潰れやすいので、まず 1:2 で指標一覧側を広く取る。
+	 * 主指標は数値1つとグラフだけなので、狭い側でも読める。
+	 */
 	@media (min-width: 1024px) {
 		.kpi-tabs {
 			display: none;
 		}
 
+		.kpi-cards-title {
+			display: block;
+		}
+
 		.kpi--tabbed .kpi-body {
-			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+			grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
 			align-items: start;
 		}
+	}
+
+	/*
+	 * 十分に広い画面では 1:1 に戻す。
+	 * 指標一覧側がこれ以上広がっても1行あたりの余白が増えるだけで、
+	 * それより主指標の数値を大きく見せたほうが遠くから読める。
+	 */
+	@media (min-width: 1600px) {
+		.kpi--tabbed .kpi-body {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+		}
+	}
+
+	.kpi-foot {
+		flex-shrink: 0;
+		padding-top: 8px;
 	}
 
 	.date {
@@ -402,7 +641,7 @@ const cardsTabId = `${sourceId}-tab-cards`;
 	:global(.trend-line) {
 		fill: none;
 		stroke: #0a0a0a;
-		stroke-width: 2;
+		stroke-width: 1.5;
 	}
 
 	:global(.trend-point) {
@@ -410,8 +649,28 @@ const cardsTabId = `${sourceId}-tab-cards`;
 		cursor: pointer;
 	}
 
+	:global(.trend-point:focus-visible) {
+		outline: 2px solid #0a0a0a;
+		outline-offset: 2px;
+	}
+
 	:global(.trend-missing line) {
 		stroke: #c0392b;
 		stroke-width: 1.5;
+	}
+
+	:global(.trend-tooltip) {
+		pointer-events: none;
+		transition: opacity 120ms ease;
+	}
+
+	:global(.trend-tooltip-bg) {
+		fill: #0a0a0a;
+	}
+
+	:global(.trend-tooltip-text) {
+		fill: #fff;
+		font-size: 9px;
+		font-weight: 700;
 	}
 </style>
