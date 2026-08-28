@@ -8,15 +8,17 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "pnpm run check:paths && pnpm run check:kpi-ids && astro build",
+    "build": "pnpm run check:paths && pnpm run check:kpi-catalog && astro build",
     "preview": "astro preview",
     "check:paths": "node scripts/check-absolute-paths.mjs",
-    "check:kpi-ids": "node scripts/check-kpi-ids.mjs",
+    "check:kpi-catalog": "node --experimental-strip-types scripts/check-kpi-catalog.mjs",
     "astro": "astro"
   },
   "dependencies": {
     "astro": "^7.2.9",
-    "d3": "^7.9.0"
+    "d3": "^7.9.0",
+    "ky": "^2.0.2",
+    "zod": "^4.4.3"
   },
   "allowScripts": {
     "esbuild": true

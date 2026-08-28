@@ -1,20 +1,25 @@
+import { createFetcher } from '../http/client';
+import { dataRowsEnvelopeSchema } from './schemas';
 import type { DataRow } from './types';
 
-/** 共立API・リハAPIとも payload.data に行配列が入る */
+/**
+ * 共立API・リハAPIとも payload.data に行配列が入る。
+ *
+ * 取得は http/client.ts の createFetcher に委ねる。素の fetch から替えたことで、
+ * タイムアウト30秒・408/429/5xx の自動リトライ・連続失敗時のサーキットブレーカー・
+ * Zod による境界検証が効くようになる。
+ *
+ * circuitKey には sourceLabel（datasource の id）を渡す。共立の GAS が落ちても
+ * リハ側の回路は独立して生きる。
+ *
+ * 行の中身は schemas.ts では検証しない（列名は kpi-catalog / datasources が持つ）ため、
+ * 呼び出し元が期待する Row 型への絞り込みはここでのキャストに委ねる。この関数の
+ * シグネチャは従来のままで、呼び出し元（kpi-values.ts）は変更していない。
+ */
 export async function fetchRows<Row extends DataRow>(apiUrl: string, sourceLabel: string): Promise<Row[]> {
-	const response = await fetch(apiUrl);
+	const fetchEnvelope = createFetcher(apiUrl, dataRowsEnvelopeSchema, (parsed) => parsed.data, sourceLabel);
 
-	if (!response.ok) {
-		throw new Error(`${sourceLabel} API request failed`);
-	}
-
-	const payload = (await response.json()) as { data?: Row[] };
-
-	if (!Array.isArray(payload.data) || payload.data.length === 0) {
-		throw new Error(`No ${sourceLabel} data rows`);
-	}
-
-	return payload.data;
+	return (await fetchEnvelope()) as Row[];
 }
 
 /** 横持ちデータは末尾の行が最新 */

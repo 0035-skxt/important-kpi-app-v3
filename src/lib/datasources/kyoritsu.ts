@@ -1,10 +1,19 @@
+import { kyoritsuKpiCatalog } from '../kpi-catalog';
 import { formatBedUsageRatio } from './format';
-import type { WideRowDataSource } from './types';
+import type { KpiValue, WideRowDataSource, WideRowKpiMapping } from './types';
+
+/**
+ * 表示整形は板側に対応概念が無いためカタログに持たせず、ここでローカルに対応付ける。
+ * 対象外の KPI では format キー自体を作らない（undefined を値として持たせない）。
+ */
+const FORMAT_OVERRIDES: Record<string, (value: KpiValue) => string> = {
+	'kyoritsu-bed-usage': formatBedUsageRatio,
+};
 
 /**
  * 共立API: 1日分が1行、KPIは列として横に並ぶ。
  * kpis[].field は API 応答の列名であり画面の見出しではない
- * （例: '病床利用率 (%)'）。画面の見出しは facility-board.ts が持つ。
+ * （例: '病床利用率 (%)'）。id・見出し・列名の出所は kpi-catalog.ts。
  */
 export const kyoritsuDataSource: WideRowDataSource = {
 	id: 'kyoritsu',
@@ -12,15 +21,14 @@ export const kyoritsuDataSource: WideRowDataSource = {
 	apiUrl:
 		'https://script.google.com/macros/s/AKfycbwor8y2k5p2zXUcIj7rBnyn3Z_V4cTyEgcyGzGnvy_VgAjam2ymmMFJNy0xUvnTuzjt/exec',
 	fields: { date: '日付' },
-	kpis: [
-		{ id: 'kyoritsu-bed-usage', field: '病床利用率 (%)', format: formatBedUsageRatio },
-		{ id: 'kyoritsu-ambulance-transport', field: '救急車搬入数' },
-		{ id: 'kyoritsu-excepted-impatient', field: '入院患者数' },
-		{ id: 'kyoritsu-excepted-discharges', field: '退院予定数' },
-		{ id: 'kyoritsu-general-inpatient', field: '一般病棟在院数' },
-		{ id: 'kyoritsu-icu-impatient', field: '集中治療室在院数' },
-		{ id: 'kyoritsu-average-stay', field: '平均在院日数' },
-		{ id: 'kyoritsu-surgeries', field: '手術件数' },
-		{ id: 'kyoritsu-long-term-inpatients', field: '長期入院者数（30日）' },
-	],
+	kpis: kyoritsuKpiCatalog.map((entry) => {
+		const kpi: WideRowKpiMapping = { id: entry.id, field: entry.field };
+		const format = FORMAT_OVERRIDES[entry.id];
+
+		if (format) {
+			kpi.format = format;
+		}
+
+		return kpi;
+	}),
 };
