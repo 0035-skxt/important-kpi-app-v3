@@ -2,12 +2,17 @@
 import FacilityKpiBoard from '../components/FacilityKpiBoard.astro';
 import FacilityKpiDataLoader from '../components/FacilityKpiDataLoader.astro';
 import Layout from '../layouts/Layout.astro';
-import { rehaBoardItems } from '../lib/facility-board';
+import { rehaBreakdownMap, rehaCardItems } from '../lib/facility-board';
 ---
 
 <Layout>
 	<div class="page">
-		<FacilityKpiBoard sourceId="reha" label="戸畑リハビリテーション病院" items={rehaBoardItems} />
+		<FacilityKpiBoard
+			sourceId="reha"
+			label="戸畑リハビリテーション病院"
+			items={rehaCardItems}
+			breakdowns={rehaBreakdownMap}
+		/>
 	</div>
 
 	<FacilityKpiDataLoader />

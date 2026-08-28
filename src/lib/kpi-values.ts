@@ -15,6 +15,8 @@ export type FacilityView = {
 	/** KPI id → 表示文字列 */
 	values: Map<string, string>;
 	trend: TrendPoint[];
+	/** クリックで主指標を切り替えたとき、再フェッチせず任意KPIのtrendを組み立てるために保持する */
+	rows: DataRow[];
 };
 
 /** APIごとに日付表現が違うため、Asia/Tokyo の YYYY-MM-DD に揃えてから扱う */
@@ -133,5 +135,21 @@ export async function loadFacilityView(
 			: '--',
 		values: read.values,
 		trend: buildTrend(read.dateKey, trendDays, read.valueByDate),
+		rows,
 	};
+}
+
+/**
+ * 初回fetch済みの rows から、任意のKPI idのtrendを再フェッチなしで組み立てる。
+ * readWide/readLong は values も一緒に計算するが、クリック時は trend しか要らない。
+ * rows は施設1件ぶん（多くて数百行）なので、毎回 values を作り直す非効率は許容する。
+ */
+export function buildTrendForKpi(
+	source: FacilityDataSource,
+	rows: DataRow[],
+	kpiId: string,
+	trendDays = 14,
+): TrendPoint[] {
+	const read = source.layout === 'wide' ? readWide(source, rows, kpiId) : readLong(source, rows, kpiId);
+	return buildTrend(read.dateKey, trendDays, read.valueByDate);
 }
