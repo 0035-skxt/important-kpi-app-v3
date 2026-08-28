@@ -15,10 +15,15 @@ export type WideRowKpiMapping = BaseKpiMapping & {
 	field: string;
 };
 
-/** 1KPIが1行として返るAPI用。path と label の組で対象行を探す */
+/**
+ * 1KPIが1行として返るAPI用。path と matchLabel の組で対象行を探す。
+ * matchLabel は画面の見出しではなく、API応答の列名 / display_name と突き合わせる検索キー
+ * （例: 共立の WideRowKpiMapping.field '病床利用率 (%)' のような API 側の生の文字列）。
+ * 画面の見出しは facility-board.ts が持つ別物であり、一致するとは限らない。
+ */
 export type LongRowKpiMapping = BaseKpiMapping & {
 	path: string;
-	label: string;
+	matchLabel: string;
 };
 
 export type WideRowDataSource = {
