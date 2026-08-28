@@ -1,0 +1,60 @@
+<script type="module">
+	import { kyoritsuDataSource } from '../lib/datasources/kyoritsu';
+	import { rehaDataSource } from '../lib/datasources/reha';
+	import { boardDateId, boardStatusId, kyoritsuBoardItems, rehaBoardItems } from '../lib/facility-board';
+	import { loadFacilityView } from '../lib/kpi-values';
+	import { clearBedUsageTrend, renderBedUsageTrend } from '../lib/trend-chart';
+
+	const FACILITIES = [
+		{ source: kyoritsuDataSource, items: kyoritsuBoardItems },
+		{ source: rehaDataSource, items: rehaBoardItems },
+	];
+
+	function setText(id, text) {
+		const element = document.getElementById(id);
+		if (element) {
+			element.textContent = text;
+		}
+	}
+
+	async function load({ source, items }) {
+		const chartItem = items.find((item) => item.chart);
+		const dateId = boardDateId(source.id);
+		const statusId = boardStatusId(source.id);
+
+		try {
+			const view = await loadFacilityView(source, { trendKpiId: chartItem?.id });
+
+			for (const item of items) {
+				setText(item.id, view.values.get(item.id) ?? '--');
+			}
+
+			setText(dateId, `日付: ${view.date}`);
+			setText(statusId, '最新データを表示しています');
+
+			if (chartItem) {
+				renderBedUsageTrend(chartItem.chart.id, view.trend);
+			}
+		} catch (error) {
+			console.error(`${source.id} KPI fetch/render failed:`, error);
+
+			for (const item of items) {
+				setText(item.id, '--');
+			}
+
+			setText(dateId, '日付: --');
+			setText(statusId, 'データを取得できませんでした');
+
+			if (chartItem) {
+				clearBedUsageTrend(chartItem.chart.id);
+			}
+		}
+	}
+
+	// 単施設ページでは、表示していない施設のAPIを叩かない
+	for (const facility of FACILITIES) {
+		if (document.getElementById(boardDateId(facility.source.id))) {
+			load(facility);
+		}
+	}
+</script>
