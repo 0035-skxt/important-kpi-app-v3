@@ -1,0 +1,45 @@
+name: Claude Assistant
+
+# Issue コメントに @claude と書いたときだけ動く。
+# PR 系トリガーは意図的に入れていない（開発者1名のため空振りするうえ、
+# fork PR を扱い始めると pull_request_target の危険域に入るため）。
+on:
+  issue_comment:
+    types: [created]
+
+# 同じ Issue で連投されても、走るのは最後の1回だけ
+concurrency:
+  group: claude-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  claude:
+    # プロンプトで断らせず、実行前にここで止める。
+    #   1行目: PR のコメントは対象外（Issue だけ）
+    #   2行目: @claude を含むコメントだけ
+    #   3行目: リポジトリ所有者本人のコメントだけ
+    if: >-
+      github.event.issue.pull_request == null &&
+      contains(github.event.comment.body, '@claude') &&
+      github.event.comment.author_association == 'OWNER'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read    # コード変更はさせない
+      issues: write     # Issue へのコメントのみ
+      id-token: write   # 公式 GitHub App 認証に必要
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Run Claude Code
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Claude に渡すコメントを本人のものだけに限定する。
+          # 「誰が起動できるか」とは別の層。他人のコメント本文経由の指示混入を減らす。
+          include_comments_by_actor: 0035-skxt
+          claude_args: |
+            --max-turns 5
+            --model claude-opus-5
+            --disallowedTools "Bash,Edit,Write,WebSearch,WebFetch"
