@@ -1,4 +1,5 @@
 ---
+import AppNav from '../components/AppNav.astro';
 import { withBase } from '../lib/base-url';
 import '../styles/global.css';
 
@@ -23,6 +24,8 @@ const appTitle = '重要指標ダッシュボード';
 		<title>{appTitle}</title>
 	</head>
 	<body>
+		<AppNav />
+
 		<div class="app-chrome app-chrome--header" tabindex="0" aria-label="ヘッダーを表示">
 			<header class="app-header">
 				<div class="app-header__inner">
@@ -74,6 +77,13 @@ const appTitle = '重要指標ダッシュボード';
 		--app-footer-height: 24px;
 		--app-content-padding: 16px;
 		/*
+		 * 左端のメニュー帯の幅。ヘッダー・フッター・メインはこのぶん右から始まる。
+		 * 狭い画面では 0 にして帯を畳み、ヘッダー左上のボタンから開く。
+		 */
+		--app-sidebar-width: 64px;
+		/* メニュー帯がパネルと面する辺の色 */
+		--app-nav-edge: #c0392b;
+		/*
 		 * ウィンドウ端とコンテンツの間の枠。四辺とも同じ値にする。
 		 * ヘッダー/フッターの帯より小さくすると、帯がコンテンツのクリックを吸う。
 		 * よって --app-header-height と --app-footer-frame-height のどちらより大きく保つこと。
@@ -100,12 +110,13 @@ const appTitle = '重要指標ダッシュボード';
 		overflow: hidden;
 	}
 
+	/* 左端のメニュー帯とは重ならない。帯を畳んだ画面では変数が 0 になり左端まで戻る */
 	.app-chrome {
 		position: fixed;
-		left: 0;
+		right: 0;
+		left: var(--app-sidebar-width);
 		z-index: 10;
 		box-sizing: border-box;
-		width: 100%;
 	}
 
 	.app-chrome--header {
@@ -126,9 +137,9 @@ const appTitle = '重要指標ダッシュボード';
 	.app-header,
 	.app-footer {
 		position: fixed;
-		left: 0;
+		right: 0;
+		left: var(--app-sidebar-width);
 		box-sizing: border-box;
-		width: 100%;
 		background: rgba(250, 250, 250, 0.96);
 		backdrop-filter: blur(8px);
 		transition: opacity 160ms ease;
@@ -167,7 +178,7 @@ const appTitle = '重要指標ダッシュボード';
 		top: var(--app-header-height);
 		right: 0;
 		bottom: var(--app-footer-frame-height);
-		left: 0;
+		left: var(--app-sidebar-width);
 		box-sizing: border-box;
 		overflow: auto;
 		overscroll-behavior: contain;
@@ -230,6 +241,27 @@ const appTitle = '重要指標ダッシュボード';
 
 		.app-title {
 			font-size: 16px;
+		}
+	}
+
+	/*
+	 * 狭い画面では左端の帯を畳む。幅を 0 にすると、これを参照している
+	 * ヘッダー・フッター・メインがまとめて左端まで戻る。
+	 */
+	@media (max-width: 600px) {
+		:global(:root) {
+			--app-sidebar-width: 0px;
+		}
+
+		/* 帯が無い画面ではメニューボタンが唯一の入口になる。ヘッダーは隠さない */
+		.app-header {
+			opacity: 1;
+			pointer-events: auto;
+		}
+
+		/* 左上のメニューボタンとタイトルを重ねない */
+		.app-header__inner {
+			padding: 0 var(--app-content-padding) 0 calc(var(--app-header-height) + 4px);
 		}
 	}
 </style>
