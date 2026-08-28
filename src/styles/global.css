@@ -100,7 +100,19 @@
 	padding: 0 var(--app-frame) var(--app-content-padding);
 }
 
+/*
+ * 中身が1枠しかないページ（準備中の施設）。
+ * .page は min-height しか持たないため、子の height:100% は解決せず内容ぶんに縮む。
+ * ここを縦フレックスにして枠を残りの高さいっぱいに伸ばし、「準備中」を中央に置く。
+ */
 .page--single {
+	display: flex;
+	flex-direction: column;
 	max-width: 1040px;
 	margin: 0 auto;
+}
+
+.page--single > * {
+	flex: 1 1 auto;
+	min-height: 0;
 }
