@@ -5,6 +5,10 @@ import { withBase } from '../lib/base-url';
  * 画面の左端に置く固定メニュー。分割グリッドの外側に立つ。
  * 狭い画面では幅を持たず、ヘッダー左上のボタンで開く畳み込みに変わる。
  * 短い名前と正式名称の両方を持たせ、幅に応じて出し分ける。
+ *
+ * 施設が増えても崩れないよう、一覧は「全体／表示中の施設／他の施設」の
+ * 3ボタングループにまとめている。表示中の施設だけを黒塗りで示し、
+ * それ以外の施設へは「他の施設」経由で移動する。
  */
 /*
  * アイコンは外部ライブラリを持たず、24pxグリッドの線画をここに直接書く。
@@ -47,8 +51,22 @@ const items = [
 	},
 ];
 
+// 「他の施設」は押下でその場に4施設の候補を展開するボタン（ページ遷移はしない）。
+const OTHER_FACILITIES = {
+	short: '他の施設',
+	full: '他の施設',
+	icon: BUILDING,
+};
+
 const normalize = (path: string) => path.replace(/\/+$/, '');
 const current = normalize(Astro.url.pathname);
+
+const [overall, ...facilities] = items;
+const overallHref = withBase(overall.href);
+const isOverallCurrent = normalize(overallHref) === current;
+
+// 表示中の施設（全体画面のときは該当なし＝ボタンを出さない）
+const currentFacility = facilities.find((item) => normalize(withBase(item.href)) === current);
 ---
 
 <button
@@ -64,13 +82,96 @@ const current = normalize(Astro.url.pathname);
 </button>
 
 <nav id="app-nav" class="app-nav" aria-label="施設メニュー">
-	<ul class="app-nav__list">
+	<span class="app-nav__brand" aria-hidden="true">
+		<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+			<path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+		</svg>
+	</span>
+
+	<div class="app-nav__group-wrap">
+	<div class="app-nav__group" role="group" aria-label="施設切り替え">
+		<a
+			class="app-nav__item"
+			href={overallHref}
+			title={overall.full}
+			aria-label={overall.full}
+			aria-current={isOverallCurrent ? 'page' : undefined}
+		>
+			<svg
+				class="app-nav__icon"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.8"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"
+				set:html={overall.icon}
+			/>
+			<span class="app-nav__short">{overall.short}</span>
+			<span class="app-nav__full">{overall.full}</span>
+		</a>
+
 		{
-			items.map((item) => {
-				const href = withBase(item.href);
-				const isCurrent = normalize(href) === current;
-				return (
-					<li>
+			currentFacility && (
+				<a
+					class="app-nav__item"
+					href={withBase(currentFacility.href)}
+					title={currentFacility.full}
+					aria-label={currentFacility.full}
+					aria-current="page"
+				>
+					<svg
+						class="app-nav__icon"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.8"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+						set:html={currentFacility.icon}
+					/>
+					<span class="app-nav__short">{currentFacility.short}</span>
+					<span class="app-nav__full">{currentFacility.full}</span>
+				</a>
+			)
+		}
+
+		<button
+			type="button"
+			class="app-nav__item app-nav__item--more"
+			aria-haspopup="true"
+			aria-expanded="false"
+			aria-controls="app-nav-more"
+			aria-label="他の施設を表示"
+			title="他の施設"
+		>
+			<svg
+				class="app-nav__icon"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.8"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"
+				set:html={OTHER_FACILITIES.icon}
+			/>
+			<span class="app-nav__short">{OTHER_FACILITIES.short}</span>
+			<span class="app-nav__full">{OTHER_FACILITIES.full}</span>
+			<svg class="app-nav__chevron" viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+				<path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+			</svg>
+		</button>
+		</div>
+
+		<div id="app-nav-more" class="app-nav__more">
+			{
+				facilities.map((item) => {
+					const href = withBase(item.href);
+					const isCurrent = normalize(href) === current;
+					return (
 						<a
 							class="app-nav__item"
 							href={href}
@@ -92,37 +193,63 @@ const current = normalize(Astro.url.pathname);
 							<span class="app-nav__short">{item.short}</span>
 							<span class="app-nav__full">{item.full}</span>
 						</a>
-					</li>
-				);
-			})
-		}
-	</ul>
+					);
+				})
+			}
+		</div>
+	</div>
 </nav>
 
 <script>
-	// 狭い画面のときだけ意味を持つ開閉。広い画面では常に開いた状態なので何もしない。
-	const toggle = document.querySelector<HTMLButtonElement>('.app-nav-toggle');
-	const nav = document.getElementById('app-nav');
-
-	if (toggle && nav) {
+	// トリガーとパネルの開閉を1組にした最小の disclosure。
+	// 狭い画面用のナビ開閉（.app-nav-toggle）と「他の施設」展開の両方をこれで賄う。
+	function setupDisclosure(
+		trigger: HTMLButtonElement,
+		panel: HTMLElement,
+		labels?: { open: string; closed: string },
+	) {
 		const setOpen = (open: boolean) => {
-			nav.classList.toggle('is-open', open);
-			toggle.setAttribute('aria-expanded', String(open));
-			toggle.setAttribute('aria-label', open ? 'メニューを閉じる' : 'メニューを開く');
+			panel.classList.toggle('is-open', open);
+			trigger.setAttribute('aria-expanded', String(open));
+			if (labels) trigger.setAttribute('aria-label', open ? labels.open : labels.closed);
 		};
 
-		toggle.addEventListener('click', () => setOpen(!nav.classList.contains('is-open')));
+		trigger.addEventListener('click', (event) => {
+			event.stopPropagation();
+			setOpen(!panel.classList.contains('is-open'));
+		});
 
 		document.addEventListener('keydown', (event) => {
 			if (event.key === 'Escape') setOpen(false);
 		});
 
-		// 外側を触ったら閉じる。ボタン自身の click は先に処理されるのでここでは除外する。
+		// 外側を触ったら閉じる。トリガー自身の click は先に処理されるのでここでは除外する。
 		document.addEventListener('click', (event) => {
 			const target = event.target;
 			if (!(target instanceof Node)) return;
-			if (nav.contains(target) || toggle.contains(target)) return;
+			if (panel.contains(target) || trigger.contains(target)) return;
 			setOpen(false);
+		});
+
+		return setOpen;
+	}
+
+	// 狭い画面のときだけ意味を持つ開閉。広い画面では常に開いた状態なので何もしない。
+	const navToggle = document.querySelector<HTMLButtonElement>('.app-nav-toggle');
+	const nav = document.getElementById('app-nav');
+	if (navToggle && nav) {
+		setupDisclosure(navToggle, nav, { open: 'メニューを閉じる', closed: 'メニューを開く' });
+	}
+
+	// 「他の施設」→ ボタン直下に4施設を展開する。
+	const moreTrigger = document.querySelector<HTMLButtonElement>('.app-nav__item--more');
+	const morePanel = document.getElementById('app-nav-more');
+	if (moreTrigger && morePanel) {
+		const setMoreOpen = setupDisclosure(moreTrigger, morePanel);
+
+		// 施設ページへ移動したときは開いたままにしない。
+		morePanel.addEventListener('click', (event) => {
+			if ((event.target as HTMLElement | null)?.closest('a')) setMoreOpen(false);
 		});
 	}
 </script>
@@ -141,15 +268,100 @@ const current = normalize(Astro.url.pathname);
 		border-right: 1px solid var(--app-nav-edge);
 		background: rgba(250, 250, 250, 0.96);
 		backdrop-filter: blur(8px);
-	}
-
-	.app-nav__list {
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
-		margin: 0;
-		padding: 0;
-		list-style: none;
+	}
+
+	/* 装飾用のロゴ相当。開閉などの機能は持たない（機能を持つトグルは .app-nav-toggle が別に担う） */
+	.app-nav__brand {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		width: 40px;
+		height: 40px;
+		margin: 0 auto 12px;
+		border-radius: 50%;
+		background: #0a0a0a;
+		color: #fafafa;
+	}
+
+	/*
+	 * 展開パネル（.app-nav__more）の位置決めの基準はこの wrap に持たせる。
+	 * .app-nav__group 自体は角丸クリップのため overflow:hidden を持つので、
+	 * そこを基準にすると絶対配置の子要素まで一緒に切り取られてしまう。
+	 */
+	.app-nav__group-wrap {
+		position: relative;
+	}
+
+	.app-nav__group {
+		display: flex;
+		flex-direction: column;
+		border: 1px solid var(--app-nav-group-border);
+		border-radius: var(--panel-radius);
+		overflow: hidden;
+	}
+
+	.app-nav__group > .app-nav__item + .app-nav__item {
+		border-top: 1px solid var(--app-nav-group-border);
+	}
+
+	.app-nav__chevron {
+		display: block;
+		flex-shrink: 0;
+		transition: transform 120ms ease;
+	}
+
+	.app-nav__item--more[aria-expanded='true'] .app-nav__chevron {
+		transform: rotate(180deg);
+	}
+
+	/*
+	 * 「他の施設」の展開パネル。ボタンの直下（縦方向）に開く。
+	 * 帯の幅は64pxしかなく施設名が収まらないため、幅は内容に合わせて広げ、
+	 * 帯の右側にはみ出すことを許容する。
+	 */
+	.app-nav__more {
+		display: none;
+		position: absolute;
+		top: 100%;
+		left: 0;
+		z-index: 25;
+		margin-top: 6px;
+		min-width: 168px;
+		flex-direction: column;
+		border: 1px solid var(--app-nav-group-border);
+		border-radius: var(--panel-radius);
+		overflow: hidden;
+		background: #fafafa;
+		box-shadow: 0 4px 16px rgba(10, 10, 10, 0.18);
+	}
+
+	.app-nav__more.is-open {
+		display: flex;
+	}
+
+	.app-nav__more > .app-nav__item + .app-nav__item {
+		border-top: 1px solid var(--app-nav-group-border);
+	}
+
+	/* 展開パネルは常に横並び（アイコン＋正式名称）。帯の幅の制約を受けない */
+	.app-nav__more .app-nav__item {
+		flex-direction: row;
+		justify-content: flex-start;
+		gap: 10px;
+		padding: 0 12px;
+		font-size: 13px;
+		text-align: left;
+	}
+
+	.app-nav__more .app-nav__short {
+		display: none;
+	}
+
+	.app-nav__more .app-nav__full {
+		display: inline;
 	}
 
 	/*
@@ -164,7 +376,6 @@ const current = normalize(Astro.url.pathname);
 		gap: 2px;
 		box-sizing: border-box;
 		min-height: 52px;
-		border-radius: var(--panel-radius);
 		color: #526070;
 		font-size: 11px;
 		font-weight: 700;
@@ -193,8 +404,8 @@ const current = normalize(Astro.url.pathname);
 
 	/* 今どこを見ているかは色だけに頼らず、下線でも示す */
 	.app-nav__item[aria-current='page'] {
-		background: var(--panel-surface);
-		color: #0a0a0a;
+		background: #0a0a0a;
+		color: #fafafa;
 		text-decoration: underline;
 		text-underline-offset: 3px;
 	}
@@ -239,7 +450,7 @@ const current = normalize(Astro.url.pathname);
 			transform: none;
 		}
 
-		/* 畳んだ側は幅に余裕がある。アイコンの横に正式名称を並べる */
+		/* 畳んだ側は幅に余裕がある。アイコンの横に正式名称を並べる（3ボタンとも同じパターン） */
 		.app-nav__item {
 			flex-direction: row;
 			justify-content: flex-start;
@@ -272,6 +483,17 @@ const current = normalize(Astro.url.pathname);
 			background: transparent;
 			color: #0a0a0a;
 			cursor: pointer;
+		}
+
+		/*
+		 * 畳んだナビの内側では、展開パネルを浮いたカードにせず本体の続きとして
+		 * 流し込む。ナビ本体の赤枠がそのまま両方を囲むので一体に見える。
+		 */
+		.app-nav__more {
+			position: static;
+			margin-top: 8px;
+			min-width: 0;
+			box-shadow: none;
 		}
 
 		.app-nav-toggle:focus-visible {
