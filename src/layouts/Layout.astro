@@ -1,6 +1,14 @@
 ---
+import AppNav from '../components/AppNav.astro';
 import { withBase } from '../lib/base-url';
 import '../styles/global.css';
+
+type Props = {
+	/** メイン領域をウィンドウいっぱいに広げる。トップページの分割表示用 */
+	fill?: boolean;
+};
+
+const { fill = false } = Astro.props;
 
 const appTitle = '重要指標ダッシュボード';
 ---
@@ -16,6 +24,8 @@ const appTitle = '重要指標ダッシュボード';
 		<title>{appTitle}</title>
 	</head>
 	<body>
+		<AppNav />
+
 		<div class="app-chrome app-chrome--header" tabindex="0" aria-label="ヘッダーを表示">
 			<header class="app-header">
 				<div class="app-header__inner">
@@ -24,7 +34,7 @@ const appTitle = '重要指標ダッシュボード';
 			</header>
 		</div>
 
-		<main class="app-main">
+		<main class:list={['app-main', 'quiet-scroll', { 'app-main--fill': fill }]}>
 			<slot />
 		</main>
 
@@ -33,16 +43,35 @@ const appTitle = '重要指標ダッシュボード';
 				<small>院内確認用</small>
 			</footer>
 		</div>
+		<script>
+			// スクロール中だけ .is-scrolling を付ける。止まってしばらくしたら外す。
+			// scroll はバブリングしないため、キャプチャ段階で拾って全領域を1つで賄う。
+			const HIDE_DELAY_MS = 800;
+			const timers = new WeakMap<Element, number>();
+
+			document.addEventListener(
+				'scroll',
+				(event) => {
+					const target = event.target;
+					if (!(target instanceof Element) || !target.classList.contains('quiet-scroll')) {
+						return;
+					}
+
+					target.classList.add('is-scrolling');
+					clearTimeout(timers.get(target));
+					timers.set(
+						target,
+						window.setTimeout(() => target.classList.remove('is-scrolling'), HIDE_DELAY_MS),
+					);
+				},
+				true,
+			);
+		</script>
 	</body>
 </html>
 
 <style>
-	:global(:root) {
-		--app-header-height: 40px;
-		--app-footer-frame-height: 36px;
-		--app-footer-height: 24px;
-		--app-content-padding: 16px;
-	}
+	/* --app-* の定義は src/styles/global.css の :root にある */
 
 	html,
 	body {
@@ -63,12 +92,13 @@ const appTitle = '重要指標ダッシュボード';
 		overflow: hidden;
 	}
 
+	/* 左端のメニュー帯とは重ならない。帯を畳んだ画面では変数が 0 になり左端まで戻る */
 	.app-chrome {
 		position: fixed;
-		left: 0;
+		right: 0;
+		left: var(--app-sidebar-width);
 		z-index: 10;
 		box-sizing: border-box;
-		width: 100%;
 	}
 
 	.app-chrome--header {
@@ -89,9 +119,9 @@ const appTitle = '重要指標ダッシュボード';
 	.app-header,
 	.app-footer {
 		position: fixed;
-		left: 0;
+		right: 0;
+		left: var(--app-sidebar-width);
 		box-sizing: border-box;
-		width: 100%;
 		background: rgba(250, 250, 250, 0.96);
 		backdrop-filter: blur(8px);
 		transition: opacity 160ms ease;
@@ -130,7 +160,7 @@ const appTitle = '重要指標ダッシュボード';
 		top: var(--app-header-height);
 		right: 0;
 		bottom: var(--app-footer-frame-height);
-		left: 0;
+		left: var(--app-sidebar-width);
 		box-sizing: border-box;
 		overflow: auto;
 		overscroll-behavior: contain;
@@ -143,10 +173,23 @@ const appTitle = '重要指標ダッシュボード';
 		justify-content: flex-end;
 		height: var(--app-footer-height);
 		padding: 0 var(--app-content-padding);
-		border-top: 1px solid #d8dde3;
 		color: #526070;
 		font-size: 12px;
 		opacity: 0;
+	}
+
+	/*
+	 * 広い画面でだけメイン領域をウィンドウいっぱいに広げる。
+	 * 枠はここが一手に持つ。中身(PanelGrid等)は四辺の余白を足さないこと。
+	 * 両方が持つと上下だけ二重になり、左右と揃わなくなる。
+	 */
+	@media (min-width: 1024px) {
+		.app-main--fill {
+			top: 0;
+			bottom: 0;
+			padding: var(--app-frame);
+			overflow: hidden;
+		}
 	}
 
 	.app-chrome--header:hover .app-header,
@@ -157,16 +200,29 @@ const appTitle = '重要指標ダッシュボード';
 		pointer-events: auto;
 	}
 
-	@media (max-width: 760px) {
-		:global(:root) {
-			--app-header-height: 40px;
-			--app-footer-frame-height: 36px;
-			--app-footer-height: 24px;
-			--app-content-padding: 12px;
+	/*
+	 * タッチ端末には hover が無く、隠れたヘッダー/フッターに到達できない。
+	 * 掲示のように「操作しない前提で余計なUIを消す」意味も無いので常時表示する。
+	 */
+	@media (hover: none) {
+		.app-header,
+		.app-footer {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
+
+	/* 帯幅の 0 化は global.css 側 */
+	@media (max-width: 600px) {
+		/* 帯が無い画面ではメニューボタンが唯一の入口になる。ヘッダーは隠さない */
+		.app-header {
+			opacity: 1;
+			pointer-events: auto;
 		}
 
-		.app-title {
-			font-size: 16px;
+		/* 左上のメニューボタンとタイトルを重ねない */
+		.app-header__inner {
+			padding: 0 var(--app-content-padding) 0 calc(var(--app-header-height) + 4px);
 		}
 	}
 </style>

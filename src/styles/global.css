@@ -7,14 +7,112 @@
 	--color-text-muted: #526070;
 }
 
-/* 各ページのインナー。ヘッダー/フッターに隠れない領域を確保する */
+/* パネルの見た目を決める値。パネルを基調にUIを広げるので1箇所に集める */
+:root {
+	--panel-gap: 16px;
+	--panel-padding: 24px;
+	--panel-radius: 4pt;
+	--panel-surface: #efefef;
+
+	--app-header-height: 40px;
+	--app-footer-frame-height: 36px;
+	--app-footer-height: 24px;
+	--app-content-padding: 16px;
+	/*
+	 * 左端のメニュー帯の幅。ヘッダー・フッター・メインはこのぶん右から始まる。
+	 * 狭い画面では 0 にして帯を畳み、ヘッダー左上のボタンから開く。
+	 */
+	--app-sidebar-width: 64px;
+	/* メニュー帯がパネルと面する辺の色。使うのは AppNav.astro だけ */
+	--app-nav-edge: #c0392b;
+	/*
+	 * ウィンドウ端とコンテンツの間の枠。四辺とも同じ値にする。
+	 * ヘッダー/フッターの帯より小さくすると、帯がコンテンツのクリックを吸う。
+	 * よって --app-header-height と --app-footer-frame-height のどちらより大きく保つこと。
+	 */
+	--app-frame: 40px;
+}
+
+/*
+ * 狭い画面では枠の余白だけ詰める。帯の高さとタイトルの文字は変えない。
+ * 以前は基底と同値の再宣言（40px/36px/24px と .app-title 16px）を並べていたが、
+ * 基底を変えても追随せず760px以下だけ取り残されるため削除した。
+ */
+@media (max-width: 760px) {
+	:root {
+		--app-content-padding: 12px;
+	}
+}
+
+/*
+ * 狭い画面では左端の帯を畳む。幅を 0 にすると、これを参照している
+ * ヘッダー・フッター・メインがまとめて左端まで戻る。
+ */
+@media (max-width: 600px) {
+	:root {
+		--panel-gap: 12px;
+		--panel-padding: 16px;
+		--app-sidebar-width: 0px;
+	}
+}
+
+/*
+ * スクロールバーを普段は見せず、スクロール中だけ出す。
+ * 幅は常に確保しておき、つまみの色だけを切り替える。
+ * 表示のたびに幅が増減すると、そのつど中身が横にずれてしまう。
+ */
+.quiet-scroll {
+	scrollbar-width: thin;
+	scrollbar-color: transparent transparent;
+	transition: scrollbar-color 240ms ease;
+}
+
+.quiet-scroll::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+.quiet-scroll::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+.quiet-scroll::-webkit-scrollbar-thumb {
+	background: transparent;
+	border-radius: 4px;
+	transition: background 240ms ease;
+}
+
+.quiet-scroll.is-scrolling {
+	scrollbar-color: rgba(82, 96, 112, 0.5) transparent;
+}
+
+.quiet-scroll.is-scrolling::-webkit-scrollbar-thumb {
+	background: rgba(82, 96, 112, 0.5);
+}
+
+/*
+ * 各ページのインナー。ヘッダー/フッターに隠れない領域を確保する。
+ * 左右はトップページと同じ枠の値を使う。ページを移っても枠が動かないようにする。
+ */
 .page {
 	box-sizing: border-box;
 	min-height: 100%;
-	padding: 0 var(--app-header-height) var(--app-content-padding);
+	padding: 0 var(--app-frame) var(--app-content-padding);
 }
 
+/*
+ * 中身が1枠しかないページ（準備中の施設）。
+ * .page は min-height しか持たないため、子の height:100% は解決せず内容ぶんに縮む。
+ * ここを縦フレックスにして枠を残りの高さいっぱいに伸ばし、「準備中」を中央に置く。
+ */
 .page--single {
+	display: flex;
+	flex-direction: column;
 	max-width: 1040px;
 	margin: 0 auto;
+}
+
+.page--single > * {
+	flex: 1 1 auto;
+	min-height: 0;
 }

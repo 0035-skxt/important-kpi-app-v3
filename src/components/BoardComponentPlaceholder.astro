@@ -1,0 +1,70 @@
+---
+type Props = {
+	/** ここに入る予定のコンポーネント名・役割 */
+	label: string;
+	/**
+	 * true(既定): パネルグリッドの1枠として親の高さいっぱいに広がる。
+	 * false: ボード内の一部に差し込む用。中身ぶんの高さだけ確保し、後に続く要素の分の余白を空ける。
+	 */
+	fill?: boolean;
+};
+
+const { label, fill = true } = Astro.props;
+---
+
+<section class:list={['placeholder', { 'placeholder--compact': !fill }]} aria-label={`${label}（実装予定）`}>
+	<p class="placeholder-label">{label}</p>
+	<p class="placeholder-badge">実装予定</p>
+</section>
+
+<style>
+	/*
+	 * 実データを持つパネル(FacilityKpiBoard など)と同じ骨格にする。
+	 * ボードやグリッドの1枠として同じ大きさ・余白で並ぶことが前提。
+	 * 破線枠にして、準備中(FacilityKpiPreparationBoard)とは違う
+	 * 「まだ組み込んでいない仮の枠」だと見た目で分かるようにする。
+	 */
+	.placeholder {
+		container-type: inline-size;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		box-sizing: border-box;
+		width: 100%;
+		height: 100%;
+		border: 2px dashed #d8dde3;
+		border-radius: var(--panel-radius);
+		padding: var(--panel-padding);
+		color: #8a95a1;
+		text-align: center;
+	}
+
+	/*
+	 * カード列の上部などに差し込むとき用。
+	 * 親(kpi-pane)は grid/flex ではない素の block なので height:100% だと
+	 * 差し込み先を占領してしまう。中身の高さに戻し、次の要素との間だけ空ける。
+	 */
+	.placeholder--compact {
+		height: auto;
+		min-height: 96px;
+		margin-bottom: var(--panel-padding);
+	}
+
+	.placeholder-label {
+		margin: 0;
+		font-size: clamp(16px, 6cqi, 24px);
+		font-weight: 700;
+	}
+
+	.placeholder-badge {
+		margin: 0;
+		border-radius: 999px;
+		background: #f0f2f4;
+		padding: 4px 12px;
+		color: #526070;
+		font-size: 13px;
+		font-weight: 700;
+	}
+</style>
