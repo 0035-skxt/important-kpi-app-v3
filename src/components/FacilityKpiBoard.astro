@@ -12,42 +12,200 @@ type Props = {
 const { sourceId, label, items, href } = Astro.props;
 const Root = href ? 'a' : 'section';
 const rootProps = href ? { href: withBase(href), 'aria-label': `${label}を開く` } : {};
+
+/*
+ * 主指標（病床利用率）と、それ以外のカードを分けて持つ。
+ * 個別ページでは前者が1列目、後者が2列目になる。
+ */
+const primaryItem = items.find((item) => item.isPrimary);
+const cardItems = items.filter((item) => !item.isPrimary);
+
+/*
+ * リンクになるパネル(トップの分割表示)にタブは置かない。
+ * a要素の中にボタンを入れると、リンクとタブでタップが競合する。
+ */
+const tabbed = !href && primaryItem !== undefined;
+
+const primaryPaneId = `${sourceId}-pane-primary`;
+const cardsPaneId = `${sourceId}-pane-cards`;
+const primaryTabId = `${sourceId}-tab-primary`;
+const cardsTabId = `${sourceId}-tab-cards`;
 ---
 
-<Root class:list={['kpi', { 'kpi--linked': href }]} aria-live="polite" {...rootProps}>
+<Root class:list={['kpi', { 'kpi--linked': href, 'kpi--tabbed': tabbed }]} aria-live="polite" {...rootProps}>
 	<header class="kpi-head">
 		<h1 class="label">{label}</h1>
 		{href && <span class="kpi-hint" aria-hidden="true">詳細を見る ›</span>}
 	</header>
 
-	<dl class="kpi-grid quiet-scroll">
+	{
+		tabbed && (
+			<div class="kpi-tabs" aria-label={`${label}の表示切り替え`}>
+				<button
+					id={primaryTabId}
+					class="kpi-tab"
+					type="button"
+					data-tab="primary"
+					aria-controls={primaryPaneId}
+				>
+					{primaryItem?.label}
+				</button>
+				<button id={cardsTabId} class="kpi-tab" type="button" data-tab="cards" aria-controls={cardsPaneId}>
+					指標一覧
+				</button>
+			</div>
+		)
+	}
+
+	<div class="kpi-body">
 		{
-			items.map((item) => (
-				<div class:list={['kpi-row', { 'kpi-row--primary': item.isPrimary }]}>
-					<dt>{item.label}</dt>
-					<dd id={item.id} class:list={[{ value: item.isPrimary }]}>
-						取得中...
-					</dd>
-					{
-						item.chart && (
-							<svg
-								id={item.chart.id}
-								class="trend-chart"
-								viewBox="0 0 320 120"
-								preserveAspectRatio="xMidYMid meet"
-								role="img"
-								aria-label={item.chart.ariaLabel}
-							/>
-						)
-					}
+			primaryItem && (
+				<div id={primaryPaneId} class="kpi-pane kpi-pane--primary">
+					<dl class="kpi-primary">
+						<dt>{primaryItem.label}</dt>
+						<dd id={primaryItem.id} class="value">
+							取得中...
+						</dd>
+					</dl>
+					{primaryItem.chart && (
+						<svg
+							id={primaryItem.chart.id}
+							class="trend-chart"
+							viewBox="0 0 320 120"
+							preserveAspectRatio="xMidYMid meet"
+							role="img"
+							aria-label={primaryItem.chart.ariaLabel}
+						/>
+					)}
 				</div>
-			))
+			)
 		}
-	</dl>
+
+		<div id={cardsPaneId} class="kpi-pane kpi-pane--cards quiet-scroll">
+			<dl class="kpi-cards">
+				{
+					cardItems.map((item) => (
+						<div class="kpi-row">
+							<dt>{item.label}</dt>
+							<dd id={item.id}>取得中...</dd>
+							{item.chart && (
+								<svg
+									id={item.chart.id}
+									class="trend-chart"
+									viewBox="0 0 320 120"
+									preserveAspectRatio="xMidYMid meet"
+									role="img"
+									aria-label={item.chart.ariaLabel}
+								/>
+							)}
+						</div>
+					))
+				}
+			</dl>
+		</div>
+	</div>
 
 	<p id={boardDateId(sourceId)} class="date">日付: --</p>
 	<p id={boardStatusId(sourceId)} class="status">APIから最新データを取得しています</p>
 </Root>
+
+<script>
+	/*
+	 * タブはモバイル幅だけの仕組み。デスクトップ幅では2列を同時に見せるので、
+	 * role やタブ順もそのつど付け外しして、見えている構造と一致させる。
+	 * 初期HTMLにはタブの状態を書かない。JSが動かない環境では両方が並んで見える。
+	 */
+	const DESKTOP_QUERY = '(min-width: 1024px)';
+
+	type Tab = { button: HTMLButtonElement; pane: HTMLElement; name: string };
+
+	function activate(board: HTMLElement, tabs: Tab[], name: string): void {
+		board.dataset.activeTab = name;
+
+		for (const tab of tabs) {
+			const isActive = tab.name === name;
+			tab.button.setAttribute('aria-selected', String(isActive));
+			tab.button.tabIndex = isActive ? 0 : -1;
+		}
+	}
+
+	function setTabSemantics(board: HTMLElement, list: HTMLElement, tabs: Tab[], enabled: boolean): void {
+		if (enabled) {
+			list.setAttribute('role', 'tablist');
+
+			for (const tab of tabs) {
+				tab.button.setAttribute('role', 'tab');
+				tab.pane.setAttribute('role', 'tabpanel');
+				tab.pane.setAttribute('aria-labelledby', tab.button.id);
+				tab.pane.tabIndex = 0;
+			}
+
+			activate(board, tabs, board.dataset.activeTab ?? tabs[0].name);
+			return;
+		}
+
+		list.removeAttribute('role');
+		delete board.dataset.activeTab;
+
+		for (const tab of tabs) {
+			tab.button.removeAttribute('role');
+			tab.button.removeAttribute('aria-selected');
+			tab.button.tabIndex = 0;
+			tab.pane.removeAttribute('role');
+			tab.pane.removeAttribute('aria-labelledby');
+			tab.pane.removeAttribute('tabindex');
+		}
+	}
+
+	function setUpBoard(board: HTMLElement): void {
+		const list = board.querySelector<HTMLElement>('.kpi-tabs');
+		if (!list) {
+			return;
+		}
+
+		const tabs: Tab[] = [];
+
+		for (const button of list.querySelectorAll<HTMLButtonElement>('.kpi-tab')) {
+			const paneId = button.getAttribute('aria-controls');
+			const pane = paneId ? board.querySelector<HTMLElement>(`#${paneId}`) : null;
+
+			if (pane && button.dataset.tab) {
+				tabs.push({ button, pane, name: button.dataset.tab });
+			}
+		}
+
+		if (tabs.length < 2) {
+			return;
+		}
+
+		for (const [index, tab] of tabs.entries()) {
+			tab.button.addEventListener('click', () => activate(board, tabs, tab.name));
+
+			// 左右キーで隣のタブへ移す。タブの作法に合わせて移した先へ焦点も送る
+			tab.button.addEventListener('keydown', (event) => {
+				const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+				if (step === 0) {
+					return;
+				}
+
+				event.preventDefault();
+				const next = tabs[(index + step + tabs.length) % tabs.length];
+				activate(board, tabs, next.name);
+				next.button.focus();
+			});
+		}
+
+		const query = window.matchMedia(DESKTOP_QUERY);
+		const sync = () => setTabSemantics(board, list, tabs, !query.matches);
+
+		sync();
+		query.addEventListener('change', sync);
+	}
+
+	for (const board of document.querySelectorAll<HTMLElement>('.kpi--tabbed')) {
+		setUpBoard(board);
+	}
+</script>
 
 <style>
 	/*
@@ -102,12 +260,41 @@ const rootProps = href ? { href: withBase(href), 'aria-label': `${label}を開�
 		text-underline-offset: 3px;
 	}
 
-	.kpi-grid {
+	/*
+	 * 既定は1列。主指標の下にカードが続く形で、トップの分割パネルはこのまま使う。
+	 * 個別ページ(.kpi--tabbed)だけを、広い画面で2列に組み替える。
+	 */
+	.kpi-body {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		flex: 1 1 auto;
+		min-height: 0;
+		gap: var(--panel-padding);
+		padding: var(--panel-padding);
+	}
+
+	.kpi-pane {
+		min-width: 0;
+	}
+
+	/*
+	 * 主指標の数値は、パネル幅ではなくこの列の幅に合わせる。
+	 * 2列に割ったときにパネル幅を基準にすると、数値が列からあふれる。
+	 */
+	.kpi-pane--primary {
+		container-type: inline-size;
+	}
+
+	.kpi-primary {
+		margin: 0;
+	}
+
+	.kpi-cards {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		align-items: start;
+		margin: 0;
 		gap: var(--panel-padding);
-		padding: var(--panel-padding);
 	}
 
 	.kpi-row {
@@ -115,12 +302,6 @@ const rootProps = href ? { href: withBase(href), 'aria-label': `${label}を開�
 		background: var(--panel-surface);
 		border-radius: var(--panel-radius);
 		padding: 12px 6px;
-	}
-
-	.kpi-row--primary {
-		grid-column: 1 / -1;
-		background: transparent;
-		padding: 0;
 	}
 
 	.kpi--linked {
@@ -154,10 +335,9 @@ const rootProps = href ? { href: withBase(href), 'aria-label': `${label}を開�
 	}
 
 	/*
-	 * ビューポート幅(vw)ではなくパネル幅(cqi)を基準にする。
+	 * ビューポート幅(vw)ではなく列の幅(cqi)を基準にする。
 	 * vw だと分割数を変えても文字が縮まず、セルからあふれる。
-	 * コンテナは PanelGrid 側が container-type: inline-size で作る。
-	 * グリッドの外（個別ページ）ではビューポート幅にフォールバックする。
+	 * コンテナは .kpi-pane--primary が作る。
 	 */
 	.value {
 		margin: 24px 0;
@@ -171,10 +351,69 @@ const rootProps = href ? { href: withBase(href), 'aria-label': `${label}を開�
 	 * パネルごと切り落とすと値が読めなくなる。
 	 */
 	@media (min-width: 1024px) {
-		.kpi-grid {
+		.kpi--linked .kpi-body {
 			min-height: 0;
 			overflow: auto;
 			overscroll-behavior: contain;
+		}
+	}
+
+	/* --- 個別ページ: 広い画面は2列、狭い画面はタブで1列ずつ --- */
+
+	.kpi-tabs {
+		display: flex;
+		justify-content: center;
+		gap: 8px;
+		padding: var(--panel-padding) var(--panel-padding) 0;
+	}
+
+	.kpi-tab {
+		border: 1px solid #d8dde3;
+		border-radius: var(--panel-radius);
+		background: transparent;
+		padding: 8px 16px;
+		color: #526070;
+		font: inherit;
+		font-size: 15px;
+		font-weight: 700;
+		cursor: pointer;
+	}
+
+	.kpi-tab[aria-selected='true'] {
+		border-color: #0a0a0a;
+		background: var(--panel-surface);
+		color: #0a0a0a;
+	}
+
+	.kpi-tab:focus-visible {
+		outline: 2px solid #0a0a0a;
+		outline-offset: 2px;
+	}
+
+	.kpi-pane:focus-visible {
+		outline: 2px solid #0a0a0a;
+		outline-offset: 4px;
+	}
+
+	/*
+	 * 選ばれていない列を隠すのは、タブが見えている幅のときだけ。
+	 * JSが動く前は data-active-tab が無く、両方そのまま並ぶ。
+	 */
+	@media (max-width: 1023px) {
+		.kpi--tabbed[data-active-tab='cards'] .kpi-pane--primary,
+		.kpi--tabbed[data-active-tab='primary'] .kpi-pane--cards {
+			display: none;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.kpi-tabs {
+			display: none;
+		}
+
+		.kpi--tabbed .kpi-body {
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+			align-items: start;
 		}
 	}
 
