@@ -1,27 +1,172 @@
 ---
 import { withBase } from '../lib/base-url';
+import '../styles/global.css';
+
+const appTitle = '重要指標ダッシュボード';
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="ja">
 	<head>
 		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<link rel="icon" type="image/svg+xml" href={withBase('favicon.svg')} />
 		<link rel="icon" href={withBase('favicon.ico')} />
 		<meta name="generator" content={Astro.generator} />
-		<title>Astro Basics</title>
+		<title>{appTitle}</title>
 	</head>
 	<body>
-		<slot />
+		<div class="app-chrome app-chrome--header" tabindex="0" aria-label="ヘッダーを表示">
+			<header class="app-header">
+				<div class="app-header__inner">
+					<a class="app-title" href={withBase('')} aria-label="全体画面へ戻る">{appTitle}</a>
+				</div>
+			</header>
+		</div>
+
+		<main class="app-main">
+			<slot />
+		</main>
+
+		<div class="app-chrome app-chrome--footer">
+			<footer class="app-footer">
+				<small>院内確認用</small>
+			</footer>
+		</div>
 	</body>
 </html>
 
 <style>
+	:global(:root) {
+		--app-header-height: 40px;
+		--app-footer-frame-height: 36px;
+		--app-footer-height: 24px;
+		--app-content-padding: 16px;
+	}
+
 	html,
 	body {
 		margin: 0;
 		width: 100%;
 		height: 100%;
+	}
+
+	body {
+		font-family:
+			system-ui,
+			-apple-system,
+			BlinkMacSystemFont,
+			'Segoe UI',
+			sans-serif;
+		color: #0a0a0a;
+		background: #fafafa;
+		overflow: hidden;
+	}
+
+	.app-chrome {
+		position: fixed;
+		left: 0;
+		z-index: 10;
+		box-sizing: border-box;
+		width: 100%;
+	}
+
+	.app-chrome--header {
+		top: 0;
+		height: var(--app-header-height);
+	}
+
+	.app-chrome--footer {
+		bottom: 0;
+		height: var(--app-footer-frame-height);
+	}
+
+	.app-chrome:focus-visible {
+		outline: 2px solid #0a0a0a;
+		outline-offset: -2px;
+	}
+
+	.app-header,
+	.app-footer {
+		position: fixed;
+		left: 0;
+		box-sizing: border-box;
+		width: 100%;
+		background: rgba(250, 250, 250, 0.96);
+		backdrop-filter: blur(8px);
+		transition: opacity 160ms ease;
+		pointer-events: none;
+	}
+
+	.app-header {
+		top: 0;
+		height: var(--app-header-height);
+		opacity: 0;
+	}
+
+	.app-header__inner {
+		display: flex;
+		align-items: center;
+		height: var(--app-header-height);
+		padding: 0 var(--app-header-height);
+	}
+
+	.app-title {
+		margin: 0;
+		color: inherit;
+		font-size: 16px;
+		font-weight: 700;
+		line-height: 1.2;
+		text-decoration: none;
+	}
+
+	.app-title:focus-visible {
+		outline: 2px solid #0a0a0a;
+		outline-offset: 4px;
+	}
+
+	.app-main {
+		position: fixed;
+		top: var(--app-header-height);
+		right: 0;
+		bottom: var(--app-footer-frame-height);
+		left: 0;
+		box-sizing: border-box;
+		overflow: auto;
+		overscroll-behavior: contain;
+	}
+
+	.app-footer {
+		bottom: 0;
+		display: flex;
+		align-items: center;
+		justify-content: flex-end;
+		height: var(--app-footer-height);
+		padding: 0 var(--app-content-padding);
+		border-top: 1px solid #d8dde3;
+		color: #526070;
+		font-size: 12px;
+		opacity: 0;
+	}
+
+	.app-chrome--header:hover .app-header,
+	.app-chrome--header:focus .app-header,
+	.app-chrome--header:focus-within .app-header,
+	.app-chrome--footer:hover .app-footer {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
+	@media (max-width: 760px) {
+		:global(:root) {
+			--app-header-height: 40px;
+			--app-footer-frame-height: 36px;
+			--app-footer-height: 24px;
+			--app-content-padding: 12px;
+		}
+
+		.app-title {
+			font-size: 16px;
+		}
 	}
 </style>

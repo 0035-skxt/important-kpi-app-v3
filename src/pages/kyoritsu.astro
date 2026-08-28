@@ -1,0 +1,14 @@
+---
+import FacilityKpiBoard from '../components/FacilityKpiBoard.astro';
+import FacilityKpiDataLoader from '../components/FacilityKpiDataLoader.astro';
+import Layout from '../layouts/Layout.astro';
+import { kyoritsuBoardItems } from '../lib/facility-board';
+---
+
+<Layout>
+	<div class="page page--single">
+		<FacilityKpiBoard sourceId="kyoritsu" label="戸畑共立病院" items={kyoritsuBoardItems} />
+	</div>
+
+	<FacilityKpiDataLoader />
+</Layout>

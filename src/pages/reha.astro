@@ -1,0 +1,14 @@
+---
+import FacilityKpiBoard from '../components/FacilityKpiBoard.astro';
+import FacilityKpiDataLoader from '../components/FacilityKpiDataLoader.astro';
+import Layout from '../layouts/Layout.astro';
+import { rehaBoardItems } from '../lib/facility-board';
+---
+
+<Layout>
+	<div class="page page--single">
+		<FacilityKpiBoard sourceId="reha" label="戸畑リハビリテーション病院" items={rehaBoardItems} />
+	</div>
+
+	<FacilityKpiDataLoader />
+</Layout>
