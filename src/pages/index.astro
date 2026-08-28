@@ -463,15 +463,22 @@ import Layout from '../layouts/Layout.astro';
 			select(`#${svgId}`).selectAll('*').remove();
 		}
 
-		// 施設ごとに独立したスケールで14日間の推移を描く。
+		// SVGサイズ・余白・Y軸開始値など、見た目に関わる設定は
+		// この1関数に集約し、両施設のグラフで必ず同一になるようにする。
+		const TREND_CHART_WIDTH = 320;
+		const TREND_CHART_HEIGHT = 120;
+		const TREND_CHART_MARGIN = { top: 10, right: 10, bottom: 20, left: 34 };
+		const TREND_Y_MIN = 0.6; // 病床利用率のY軸は60%から開始する
+
+		// 施設ごとに実データの上限までスケールする（下限は両施設共通で60%固定）。
 		// 欠測日は前日値で補間せず、×印＋title属性で「データなし」と明示する。
 		function renderBedUsageTrend(svgId, series) {
 			const svg = select(`#${svgId}`);
 			svg.selectAll('*').remove();
 
-			const width = 320;
-			const height = 120;
-			const margin = { top: 10, right: 10, bottom: 18, left: 34 };
+			const width = TREND_CHART_WIDTH;
+			const height = TREND_CHART_HEIGHT;
+			const margin = TREND_CHART_MARGIN;
 			const innerWidth = width - margin.left - margin.right;
 			const innerHeight = height - margin.top - margin.bottom;
 
@@ -488,26 +495,25 @@ import Layout from '../layouts/Layout.astro';
 				return;
 			}
 
-			const [minValue, maxValue] = extent(values);
-			const padding = Math.max((maxValue - minValue) * 0.2, 0.005);
+			const maxValue = Math.max(...values);
+			const yMax = Math.min(1, Math.max(maxValue + 0.02, TREND_Y_MIN + 0.02));
 
 			const x = scalePoint()
 				.domain(series.map((d) => d.date))
 				.range([0, innerWidth]);
 
-			const y = scaleLinear()
-				.domain([minValue - padding, maxValue + padding])
-				.range([innerHeight, 0]);
+			const y = scaleLinear().domain([TREND_Y_MIN, yMax]).range([innerHeight, 0]);
 
 			const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
+			// グリッド線は表示せず、Y軸のラベルとその位置を示す短い目盛りのみ描く。
 			const yTicks = y.ticks(3);
-			g.selectAll('.trend-gridline')
+			g.selectAll('.trend-y-tick')
 				.data(yTicks)
 				.join('line')
-				.attr('class', 'trend-gridline')
-				.attr('x1', 0)
-				.attr('x2', innerWidth)
+				.attr('class', 'trend-y-tick')
+				.attr('x1', -3)
+				.attr('x2', 0)
 				.attr('y1', (d) => y(d))
 				.attr('y2', (d) => y(d));
 
@@ -541,13 +547,19 @@ import Layout from '../layouts/Layout.astro';
 
 			g.append('path').datum(series).attr('class', 'trend-line').attr('d', lineGenerator);
 
-			g.selectAll('.trend-point')
+			const points = g
+				.selectAll('.trend-point')
 				.data(series.filter((d) => d.value != null))
 				.join('circle')
 				.attr('class', 'trend-point')
 				.attr('cx', (d) => x(d.date))
 				.attr('cy', (d) => y(d.value))
-				.attr('r', 2.5);
+				.attr('r', 3);
+
+			// ツールチップはブラウザ標準のtitle属性（ホバーで日付・値を表示）で対応する。
+			points
+				.append('title')
+				.text((d) => `${formatTrendDate(d.date)}: ${(d.value * 100).toFixed(1)}%`);
 
 			const missing = g
 				.selectAll('.trend-missing')
@@ -556,9 +568,14 @@ import Layout from '../layouts/Layout.astro';
 				.attr('class', 'trend-missing')
 				.attr('transform', (d) => `translate(${x(d.date)},${innerHeight / 2})`);
 
-			missing.append('title').text('データなし');
+			missing.append('title').text((d) => `${formatTrendDate(d.date)}: データなし`);
 			missing.append('line').attr('x1', -4).attr('y1', -4).attr('x2', 4).attr('y2', 4);
 			missing.append('line').attr('x1', -4).attr('y1', 4).attr('x2', 4).attr('y2', -4);
+		}
+
+		function formatTrendDate(dateKey) {
+			const date = new Date(`${dateKey}T00:00:00Z`);
+			return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 		}
 
 		function renderKyoritsuError() {
@@ -738,8 +755,8 @@ import Layout from '../layouts/Layout.astro';
 		font-size: 12px;
 	}
 
-	:global(.trend-gridline) {
-		stroke: #d8d8d8;
+	:global(.trend-y-tick) {
+		stroke: #526070;
 		stroke-width: 1;
 	}
 
@@ -757,6 +774,7 @@ import Layout from '../layouts/Layout.astro';
 
 	:global(.trend-point) {
 		fill: #0a0a0a;
+		cursor: pointer;
 	}
 
 	:global(.trend-missing line) {
