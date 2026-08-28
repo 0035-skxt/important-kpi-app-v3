@@ -16,7 +16,9 @@
   },
   "dependencies": {
     "astro": "^7.2.9",
-    "d3": "^7.9.0"
+    "d3": "^7.9.0",
+    "ky": "^2.0.2",
+    "zod": "^4.4.3"
   },
   "allowScripts": {
     "esbuild": true
