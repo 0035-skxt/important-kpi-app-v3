@@ -71,25 +71,7 @@ const appTitle = '重要指標ダッシュボード';
 </html>
 
 <style>
-	:global(:root) {
-		--app-header-height: 40px;
-		--app-footer-frame-height: 36px;
-		--app-footer-height: 24px;
-		--app-content-padding: 16px;
-		/*
-		 * 左端のメニュー帯の幅。ヘッダー・フッター・メインはこのぶん右から始まる。
-		 * 狭い画面では 0 にして帯を畳み、ヘッダー左上のボタンから開く。
-		 */
-		--app-sidebar-width: 64px;
-		/* メニュー帯がパネルと面する辺の色 */
-		--app-nav-edge: #c0392b;
-		/*
-		 * ウィンドウ端とコンテンツの間の枠。四辺とも同じ値にする。
-		 * ヘッダー/フッターの帯より小さくすると、帯がコンテンツのクリックを吸う。
-		 * よって --app-header-height と --app-footer-frame-height のどちらより大きく保つこと。
-		 */
-		--app-frame: 40px;
-	}
+	/* --app-* の定義は src/styles/global.css の :root にある */
 
 	html,
 	body {
@@ -230,28 +212,8 @@ const appTitle = '重要指標ダッシュボード';
 		}
 	}
 
-	@media (max-width: 760px) {
-		:global(:root) {
-			--app-header-height: 40px;
-			--app-footer-frame-height: 36px;
-			--app-footer-height: 24px;
-			--app-content-padding: 12px;
-		}
-
-		.app-title {
-			font-size: 16px;
-		}
-	}
-
-	/*
-	 * 狭い画面では左端の帯を畳む。幅を 0 にすると、これを参照している
-	 * ヘッダー・フッター・メインがまとめて左端まで戻る。
-	 */
+	/* 帯幅の 0 化は global.css 側 */
 	@media (max-width: 600px) {
-		:global(:root) {
-			--app-sidebar-width: 0px;
-		}
-
 		/* 帯が無い画面ではメニューボタンが唯一の入口になる。ヘッダーは隠さない */
 		.app-header {
 			opacity: 1;

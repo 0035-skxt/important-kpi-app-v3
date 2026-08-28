@@ -13,12 +13,46 @@
 	--panel-padding: 24px;
 	--panel-radius: 4pt;
 	--panel-surface: #efefef;
+
+	--app-header-height: 40px;
+	--app-footer-frame-height: 36px;
+	--app-footer-height: 24px;
+	--app-content-padding: 16px;
+	/*
+	 * 左端のメニュー帯の幅。ヘッダー・フッター・メインはこのぶん右から始まる。
+	 * 狭い画面では 0 にして帯を畳み、ヘッダー左上のボタンから開く。
+	 */
+	--app-sidebar-width: 64px;
+	/* メニュー帯がパネルと面する辺の色。使うのは AppNav.astro だけ */
+	--app-nav-edge: #c0392b;
+	/*
+	 * ウィンドウ端とコンテンツの間の枠。四辺とも同じ値にする。
+	 * ヘッダー/フッターの帯より小さくすると、帯がコンテンツのクリックを吸う。
+	 * よって --app-header-height と --app-footer-frame-height のどちらより大きく保つこと。
+	 */
+	--app-frame: 40px;
 }
 
+/*
+ * 狭い画面では枠の余白だけ詰める。帯の高さとタイトルの文字は変えない。
+ * 以前は基底と同値の再宣言（40px/36px/24px と .app-title 16px）を並べていたが、
+ * 基底を変えても追随せず760px以下だけ取り残されるため削除した。
+ */
+@media (max-width: 760px) {
+	:root {
+		--app-content-padding: 12px;
+	}
+}
+
+/*
+ * 狭い画面では左端の帯を畳む。幅を 0 にすると、これを参照している
+ * ヘッダー・フッター・メインがまとめて左端まで戻る。
+ */
 @media (max-width: 600px) {
 	:root {
 		--panel-gap: 12px;
 		--panel-padding: 16px;
+		--app-sidebar-width: 0px;
 	}
 }
 
