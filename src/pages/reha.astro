@@ -12,3 +12,14 @@ import { rehaBoardItems } from '../lib/facility-board';
 
 	<FacilityKpiDataLoader />
 </Layout>
+
+<style>
+	/*
+	 * .page は既定 min-height:100% で、中身に応じて伸びページ全体がスクロールする。
+	 * ボードページは見出し/フッターを固定し中央だけ内部スクロールさせたいので、
+	 * ここだけ高さを確定させ、FacilityKpiBoard の height:100% を効かせる。
+	 */
+	.page {
+		height: 100%;
+	}
+</style>
