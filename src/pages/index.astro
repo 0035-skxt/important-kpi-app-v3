@@ -17,13 +17,14 @@ import Layout from '../layouts/Layout.astro';
 
 		const API_URL =
 			'https://script.google.com/macros/s/AKfycbwor8y2k5p2zXUcIj7rBnyn3Z_V4cTyEgcyGzGnvy_VgAjam2ymmMFJNy0xUvnTuzjt/exec';
-
+		const FIELD_USAGE_RATE = '病床利用率 (%)';
+		const FIELD_DATE = '日付';
 
 		const valueElement = document.querySelector('#bed-usage');
 		const dateElement = document.querySelector('#target-date');
 		const statusElement = document.querySelector('#status');
 
-		async function loadBedUsage() {
+		async function fetchLatestBedUsage() {
 			try {
 				const response = await fetch(API_URL);
 
@@ -38,20 +39,42 @@ import Layout from '../layouts/Layout.astro';
 					throw new Error('No data rows');
 				}
 
-				const latest = rows[rows.length - 1];
-				const usageRate = latest['病床利用率 (%)'] * 100;
+				return rows[rows.length - 1];
+			} catch (error) {
+				console.error('bed usage fetch failed:', error);
+				throw error;
+			}
+		}
+
+		async function renderBedUsage(latest) {
+			try {
+				const usageRate = latest[FIELD_USAGE_RATE] * 100;
 
 				if (!Number.isFinite(usageRate)) {
 					throw new Error('Invalid bed usage rate');
 				}
 
 				valueElement.textContent = `${usageRate.toFixed(1)}%`;
-				dateElement.textContent = `日付: ${latest['日付'] ?? '--'}`;
+				dateElement.textContent = `日付: ${latest[FIELD_DATE] ?? '--'}`;
 				statusElement.textContent = '最新データを表示しています';
 			} catch (error) {
-				valueElement.textContent = '--%';
-				dateElement.textContent = '日付: --';
-				statusElement.textContent = 'データを取得できませんでした';
+				console.error('bed usage render failed:', error);
+				throw error;
+			}
+		}
+
+		function renderError() {
+			valueElement.textContent = '--%';
+			dateElement.textContent = '日付: --';
+			statusElement.textContent = 'データを取得できませんでした';
+		}
+
+		async function loadBedUsage() {
+			try {
+				const latest = await fetchLatestBedUsage();
+				renderBedUsage(latest);
+			} catch (error) {
+				renderError();
 			}
 		}
 
