@@ -1,17 +1,15 @@
 ---
 import { withBase } from '../lib/base-url';
-import type { KpiBoardItem } from '../lib/facility-board-types';
+import { boardDateId, boardStatusId, type KpiBoardItem } from '../lib/facility-board';
 
 type Props = {
+	sourceId: string;
 	label: string;
 	items: KpiBoardItem[];
-	dateId: string;
-	statusId: string;
-	statusText?: string;
 	href?: string;
 };
 
-const { label, items, dateId, statusId, statusText = 'APIから最新データを取得しています', href } = Astro.props;
+const { sourceId, label, items, href } = Astro.props;
 const Root = href ? 'a' : 'section';
 const rootProps = href ? { href: withBase(href), 'aria-label': `${label}を開く` } : {};
 ---
@@ -44,8 +42,8 @@ const rootProps = href ? { href: withBase(href), 'aria-label': `${label}を開�
 		}
 	</dl>
 
-	<p id={dateId} class="date">日付: --</p>
-	<p id={statusId} class="status">{statusText}</p>
+	<p id={boardDateId(sourceId)} class="date">日付: --</p>
+	<p id={boardStatusId(sourceId)} class="status">APIから最新データを取得しています</p>
 </Root>
 
 <style>

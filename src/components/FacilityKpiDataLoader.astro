@@ -1,273 +1,60 @@
 <script type="module">
-	import { select, scalePoint, scaleLinear, line } from 'd3';
-	import { kyoritsuDataSource, KYORITSU_FIELDS } from '../lib/datasources/kyoritsu';
-	import { rehaDataSource, REHA_LABELS } from '../lib/datasources/reha';
-	import { fetchRows, getLatestLongRows, getLatestWideRow } from '../lib/datasources/rows';
+	import { kyoritsuDataSource } from '../lib/datasources/kyoritsu';
+	import { rehaDataSource } from '../lib/datasources/reha';
+	import { boardDateId, boardStatusId, kyoritsuBoardItems, rehaBoardItems } from '../lib/facility-board';
+	import { loadFacilityView } from '../lib/kpi-values';
+	import { clearBedUsageTrend, renderBedUsageTrend } from '../lib/trend-chart';
 
-	const DATA_FIELD_KYORITSU = KYORITSU_FIELDS;
-	const DATA_FIELD_REHA = REHA_LABELS;
-	const TREND_DAYS = 14;
-	const API_URL_KYORITSU = kyoritsuDataSource.apiUrl;
-	const API_URL_REHA = rehaDataSource.apiUrl;
-	const REHA_RESPONSE_FIELD = {
-		DATE: rehaDataSource.responseFields.date,
-		PATH: rehaDataSource.responseFields.path,
-		LABEL: rehaDataSource.responseFields.label,
-		VALUE: rehaDataSource.responseFields.value,
-	};
-	const KPI_CONFIGS_KYORITSU = kyoritsuDataSource.kpis;
-	const KPI_CONFIGS_REHA = rehaDataSource.kpis;
+	const FACILITIES = [
+		{ source: kyoritsuDataSource, items: kyoritsuBoardItems },
+		{ source: rehaDataSource, items: rehaBoardItems },
+	];
 
-	function getLatestRehaDate(rows) {
-		return getLatestLongRows(rows, REHA_RESPONSE_FIELD.DATE).date;
+	function setText(id, text) {
+		const element = document.getElementById(id);
+		if (element) {
+			element.textContent = text;
+		}
 	}
 
-	function toTokyoDateKey(value) {
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) {
-			return null;
-		}
-		return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' }).format(date);
-	}
+	async function load({ source, items }) {
+		const chartItem = items.find((item) => item.chart);
+		const dateId = boardDateId(source.id);
+		const statusId = boardStatusId(source.id);
 
-	function buildDailySeries(latestDateKey, days, valueByDate) {
-		if (!latestDateKey) {
-			return [];
-		}
+		try {
+			const view = await loadFacilityView(source, { trendKpiId: chartItem?.id });
 
-		const series = [];
-		const base = new Date(`${latestDateKey}T00:00:00Z`);
+			for (const item of items) {
+				setText(item.id, view.values.get(item.id) ?? '--');
+			}
 
-		for (let i = days - 1; i >= 0; i -= 1) {
-			const d = new Date(base);
-			d.setUTCDate(d.getUTCDate() - i);
-			const key = d.toISOString().slice(0, 10);
-			series.push({ date: key, value: valueByDate.has(key) ? valueByDate.get(key) : null });
-		}
+			setText(dateId, `日付: ${view.date}`);
+			setText(statusId, '最新データを表示しています');
 
-		return series;
-	}
+			if (chartItem) {
+				renderBedUsageTrend(chartItem.chart.id, view.trend);
+			}
+		} catch (error) {
+			console.error(`${source.id} KPI fetch/render failed:`, error);
 
-	function getKyoritsuBedUsageSeries(rows, days = TREND_DAYS) {
-		const byDate = new Map();
-		for (const row of rows) {
-			const key = toTokyoDateKey(row[DATA_FIELD_KYORITSU.DATE]);
-			if (key) {
-				byDate.set(key, row[DATA_FIELD_KYORITSU.BED_USAGE]);
+			for (const item of items) {
+				setText(item.id, '--');
+			}
+
+			setText(dateId, '日付: --');
+			setText(statusId, 'データを取得できませんでした');
+
+			if (chartItem) {
+				clearBedUsageTrend(chartItem.chart.id);
 			}
 		}
-
-		const latestKey = toTokyoDateKey(getLatestWideRow(rows)[DATA_FIELD_KYORITSU.DATE]);
-		return buildDailySeries(latestKey, days, byDate);
 	}
 
-	function getRehaBedUsageSeries(rows, days = TREND_DAYS) {
-		const byDate = new Map();
-		for (const row of rows) {
-			if (row[REHA_RESPONSE_FIELD.PATH] === '/reha' && row[REHA_RESPONSE_FIELD.LABEL] === DATA_FIELD_REHA.BED_USAGE) {
-				byDate.set(row[REHA_RESPONSE_FIELD.DATE], row[REHA_RESPONSE_FIELD.VALUE]);
-			}
+	// 単施設ページでは、表示していない施設のAPIを叩かない
+	for (const facility of FACILITIES) {
+		if (document.getElementById(boardDateId(facility.source.id))) {
+			load(facility);
 		}
-
-		return buildDailySeries(getLatestRehaDate(rows), days, byDate);
-	}
-
-	function setValue(id, text) {
-		const el = document.getElementById(id);
-		if (el) {
-			el.textContent = text;
-		}
-	}
-
-	function formatDate(value) {
-		const date = new Date(value);
-		if (Number.isNaN(date.getTime())) {
-			return null;
-		}
-		return date.toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo' });
-	}
-
-	function renderKyoritsuKpis(latest) {
-		for (const { id, field, format } of KPI_CONFIGS_KYORITSU) {
-			const raw = latest[field];
-			setValue(id, raw != null && raw !== '' ? (format ? format(raw) : String(raw)) : '--');
-		}
-
-		setValue('kyoritsu-target-date', `日付: ${formatDate(latest[DATA_FIELD_KYORITSU.DATE]) ?? '--'}`);
-		setValue('kyoritsu-status', '最新データを表示しています');
-	}
-
-	function renderRehaKpis(latest) {
-		for (const { id, path, label, format } of KPI_CONFIGS_REHA) {
-			const row = latest.rows.find(
-				(row) => row[REHA_RESPONSE_FIELD.PATH] === path && row[REHA_RESPONSE_FIELD.LABEL] === label,
-			);
-			const raw = row?.[REHA_RESPONSE_FIELD.VALUE];
-			setValue(id, raw != null && raw !== '' ? (format ? format(raw) : String(raw)) : '--');
-		}
-
-		setValue('reha-target-date', `日付: ${latest.date || '--'}`);
-		setValue('reha-status', '最新データを表示しています');
-	}
-
-	function clearTrendChart(svgId) {
-		select(`#${svgId}`).selectAll('*').remove();
-	}
-
-	const TREND_CHART_WIDTH = 320;
-	const TREND_CHART_HEIGHT = 120;
-	const TREND_CHART_MARGIN = { top: 10, right: 10, bottom: 20, left: 34 };
-	const TREND_Y_MIN = 0.6;
-
-	function renderBedUsageTrend(svgId, series) {
-		const svg = select(`#${svgId}`);
-		svg.selectAll('*').remove();
-
-		const width = TREND_CHART_WIDTH;
-		const height = TREND_CHART_HEIGHT;
-		const margin = TREND_CHART_MARGIN;
-		const innerWidth = width - margin.left - margin.right;
-		const innerHeight = height - margin.top - margin.bottom;
-
-		const values = series.map((d) => d.value).filter((v) => v != null);
-
-		if (values.length === 0) {
-			svg
-				.append('text')
-				.attr('class', 'trend-chart-empty')
-				.attr('x', width / 2)
-				.attr('y', height / 2)
-				.attr('text-anchor', 'middle')
-				.text('データなし');
-			return;
-		}
-
-		const maxValue = Math.max(...values);
-		const yMax = Math.min(1, Math.max(maxValue + 0.02, TREND_Y_MIN + 0.02));
-
-		const x = scalePoint()
-			.domain(series.map((d) => d.date))
-			.range([0, innerWidth]);
-
-		const y = scaleLinear().domain([TREND_Y_MIN, yMax]).range([innerHeight, 0]);
-
-		const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
-		const yTicks = y.ticks(3);
-
-		g.selectAll('.trend-y-tick')
-			.data(yTicks)
-			.join('line')
-			.attr('class', 'trend-y-tick')
-			.attr('x1', -3)
-			.attr('x2', 0)
-			.attr('y1', (d) => y(d))
-			.attr('y2', (d) => y(d));
-
-		g.selectAll('.trend-y-label')
-			.data(yTicks)
-			.join('text')
-			.attr('class', 'trend-y-label')
-			.attr('x', -6)
-			.attr('y', (d) => y(d))
-			.attr('dominant-baseline', 'middle')
-			.attr('text-anchor', 'end')
-			.text((d) => `${(d * 100).toFixed(0)}%`);
-
-		const tickDates = series.filter((_, i) => i % 3 === 0 || i === series.length - 1).map((d) => d.date);
-		g.selectAll('.trend-x-label')
-			.data(tickDates)
-			.join('text')
-			.attr('class', 'trend-x-label')
-			.attr('x', (d) => x(d))
-			.attr('y', innerHeight + 14)
-			.attr('text-anchor', 'middle')
-			.text((d) => {
-				const date = new Date(`${d}T00:00:00Z`);
-				return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
-			});
-
-		const lineGenerator = line()
-			.defined((d) => d.value != null)
-			.x((d) => x(d.date))
-			.y((d) => y(d.value));
-
-		g.append('path').datum(series).attr('class', 'trend-line').attr('d', lineGenerator);
-
-		const points = g
-			.selectAll('.trend-point')
-			.data(series.filter((d) => d.value != null))
-			.join('circle')
-			.attr('class', 'trend-point')
-			.attr('cx', (d) => x(d.date))
-			.attr('cy', (d) => y(d.value))
-			.attr('r', 3);
-
-		points.append('title').text((d) => `${formatTrendDate(d.date)}: ${(d.value * 100).toFixed(1)}%`);
-
-		const missing = g
-			.selectAll('.trend-missing')
-			.data(series.filter((d) => d.value == null))
-			.join('g')
-			.attr('class', 'trend-missing')
-			.attr('transform', (d) => `translate(${x(d.date)},${innerHeight / 2})`);
-
-		missing.append('title').text((d) => `${formatTrendDate(d.date)}: データなし`);
-		missing.append('line').attr('x1', -4).attr('y1', -4).attr('x2', 4).attr('y2', 4);
-		missing.append('line').attr('x1', -4).attr('y1', 4).attr('x2', 4).attr('y2', -4);
-	}
-
-	function formatTrendDate(dateKey) {
-		const date = new Date(`${dateKey}T00:00:00Z`);
-		return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
-	}
-
-	function renderKyoritsuError() {
-		for (const { id } of KPI_CONFIGS_KYORITSU) {
-			setValue(id, '--');
-		}
-
-		setValue('kyoritsu-target-date', '日付: --');
-		setValue('kyoritsu-status', 'データを取得できませんでした');
-		clearTrendChart('kyoritsu-bed-usage-chart');
-	}
-
-	function renderRehaError() {
-		for (const { id } of KPI_CONFIGS_REHA) {
-			setValue(id, '--');
-		}
-
-		setValue('reha-target-date', '日付: --');
-		setValue('reha-status', 'データを取得できませんでした');
-		clearTrendChart('reha-bed-usage-chart');
-	}
-
-	async function loadKyoritsuKpis() {
-		try {
-			const rows = await fetchRows({ apiUrl: API_URL_KYORITSU, sourceLabel: 'Kyoritsu' });
-			renderKyoritsuKpis(getLatestWideRow(rows));
-			renderBedUsageTrend('kyoritsu-bed-usage-chart', getKyoritsuBedUsageSeries(rows));
-		} catch (error) {
-			console.error('Kyoritsu KPI fetch/render failed:', error);
-			renderKyoritsuError();
-		}
-	}
-
-	async function loadRehaKpis() {
-		try {
-			const rows = await fetchRows({ apiUrl: API_URL_REHA, sourceLabel: 'Reha' });
-			renderRehaKpis(getLatestLongRows(rows, REHA_RESPONSE_FIELD.DATE));
-			renderBedUsageTrend('reha-bed-usage-chart', getRehaBedUsageSeries(rows));
-		} catch (error) {
-			console.error('Reha KPI fetch/render failed:', error);
-			renderRehaError();
-		}
-	}
-
-	if (document.getElementById('kyoritsu-bed-usage')) {
-		loadKyoritsuKpis();
-	}
-
-	if (document.getElementById('reha-bed-usage')) {
-		loadRehaKpis();
 	}
 </script>

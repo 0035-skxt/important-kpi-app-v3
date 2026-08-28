@@ -1,14 +1,26 @@
-import type { KpiBoardItem } from './facility-board-types';
+export type KpiBoardItem = {
+	/** datasources 側の KPI id と一致させる */
+	id: string;
+	label: string;
+	isPrimary?: boolean;
+	chart?: { id: string; ariaLabel: string };
+};
+
+/** 日付・状態のidは施設idから導く。FacilityKpiBoard と FacilityKpiDataLoader で共有する */
+export function boardDateId(sourceId: string): string {
+	return `${sourceId}-target-date`;
+}
+
+export function boardStatusId(sourceId: string): string {
+	return `${sourceId}-status`;
+}
 
 export const kyoritsuBoardItems: KpiBoardItem[] = [
 	{
 		id: 'kyoritsu-bed-usage',
 		label: '病床利用率',
 		isPrimary: true,
-		chart: {
-			id: 'kyoritsu-bed-usage-chart',
-			ariaLabel: '病床利用率の14日間推移グラフ',
-		},
+		chart: { id: 'kyoritsu-bed-usage-chart', ariaLabel: '病床利用率の14日間推移グラフ' },
 	},
 	{ id: 'kyoritsu-ambulance-transport', label: '救急車搬入数' },
 	{ id: 'kyoritsu-excepted-impatient', label: '入院患者数' },
@@ -25,10 +37,7 @@ export const rehaBoardItems: KpiBoardItem[] = [
 		id: 'reha-bed-usage',
 		label: '病床利用率',
 		isPrimary: true,
-		chart: {
-			id: 'reha-bed-usage-chart',
-			ariaLabel: '病床利用率の14日間推移グラフ',
-		},
+		chart: { id: 'reha-bed-usage-chart', ariaLabel: '病床利用率の14日間推移グラフ' },
 	},
 	{ id: 'reha-inpatient', label: '在院数' },
 	{ id: 'reha-excepted-impatient', label: '入院患者数' },
