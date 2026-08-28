@@ -212,7 +212,7 @@ const { sourceId, label, items, href } = Astro.props;
 	:global(.trend-line) {
 		fill: none;
 		stroke: #0a0a0a;
-		stroke-width: 2;
+		stroke-width: 1.5;
 	}
 
 	:global(.trend-point) {
@@ -220,8 +220,28 @@ const { sourceId, label, items, href } = Astro.props;
 		cursor: pointer;
 	}
 
+	:global(.trend-point:focus-visible) {
+		outline: 2px solid #0a0a0a;
+		outline-offset: 2px;
+	}
+
 	:global(.trend-missing line) {
 		stroke: #c0392b;
 		stroke-width: 1.5;
+	}
+
+	:global(.trend-tooltip) {
+		pointer-events: none;
+		transition: opacity 120ms ease;
+	}
+
+	:global(.trend-tooltip-bg) {
+		fill: #0a0a0a;
+	}
+
+	:global(.trend-tooltip-text) {
+		fill: #fff;
+		font-size: 9px;
+		font-weight: 700;
 	}
 </style>
