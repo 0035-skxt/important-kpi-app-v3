@@ -19,7 +19,10 @@ import { z } from 'zod';
 
 import { kyoritsuKpiCatalog, rehaKpiCatalog } from '../src/lib/kpi-catalog.ts';
 
-const chartSchema = z.strictObject({ ariaLabel: z.string().min(1) });
+const chartSchema = z.strictObject({
+	ariaLabel: z.string().min(1),
+	valueKind: z.enum(['ratio', 'count', 'days']).optional(),
+});
 
 const baseShape = {
 	id: z.string().min(1),
@@ -29,11 +32,22 @@ const baseShape = {
 };
 
 const kyoritsuEntrySchema = z.strictObject({ ...baseShape, field: z.string().min(1) });
-const rehaEntrySchema = z.strictObject({
-	...baseShape,
-	path: z.string().min(1),
-	matchLabel: z.string().min(1),
-});
+const rehaEntrySchema = z
+	.strictObject({
+		...baseShape,
+		path: z.string().min(1),
+		matchLabel: z.string().min(1),
+		breakdownOf: z.string().min(1).optional(),
+		breakdownGroup: z.enum(['care', 'ward']).optional(),
+		breakdownLabel: z.string().min(1).optional(),
+	})
+	.refine(
+		(entry) => {
+			const flags = [entry.breakdownOf, entry.breakdownGroup, entry.breakdownLabel];
+			return flags.every((v) => v === undefined) || flags.every((v) => v !== undefined);
+		},
+		{ message: 'breakdownOf/breakdownGroup/breakdownLabel は3つとも揃えるか、3つとも外すこと' },
+	);
 
 const CATALOGS = [
 	{ name: 'kyoritsu', entries: kyoritsuKpiCatalog, schema: kyoritsuEntrySchema },
@@ -63,6 +77,18 @@ for (const { name, entries, schema } of CATALOGS) {
 			problems.push(`[${name}] id が重複しています: ${entry.id}`);
 		}
 		seenIds.add(entry.id);
+	}
+
+	// breakdownOf は同じカタログ内の「一覧側」項目（breakdownOf を持たない項目）のidを指しているはず。
+	// タイプミスで存在しないidや、内訳側同士のidを指すと画面で静かに無視されるため、ビルド時に拾う。
+	const cardIds = new Set(result.data.filter((entry) => entry.breakdownOf === undefined).map((entry) => entry.id));
+
+	for (const entry of result.data) {
+		if (entry.breakdownOf !== undefined && !cardIds.has(entry.breakdownOf)) {
+			problems.push(
+				`[${name}] breakdownOf が一覧側の id を指していません: ${entry.id} → ${entry.breakdownOf}`,
+			);
+		}
 	}
 }
 

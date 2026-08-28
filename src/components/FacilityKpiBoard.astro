@@ -1,14 +1,17 @@
 ---
 import BoardComponentPlaceholder from './BoardComponentPlaceholder.astro';
-import { boardDateId, boardStatusId, type KpiBoardItem } from '../lib/facility-board';
+import { boardDateId, boardStatusId, type KpiBoardItem, type KpiBreakdownMap } from '../lib/facility-board';
 
 type Props = {
 	sourceId: string;
 	label: string;
+	/** 一覧カードに出す項目（reha=5件, kyoritsu=9件） */
 	items: KpiBoardItem[];
+	/** 渡さない＝この施設は内訳機能を一切持たない（kyoritsu） */
+	breakdowns?: KpiBreakdownMap;
 };
 
-const { sourceId, label, items } = Astro.props;
+const { sourceId, label, items, breakdowns } = Astro.props;
 
 /*
  * 主指標（病床利用率）が1列目、指標一覧が2列目になる。
@@ -23,6 +26,17 @@ const primaryPaneId = `${sourceId}-pane-primary`;
 const cardsPaneId = `${sourceId}-pane-cards`;
 const primaryTabId = `${sourceId}-tab-primary`;
 const cardsTabId = `${sourceId}-tab-cards`;
+
+/*
+ * primary pane側の要素id。クリックで主指標が入れ替わるため、
+ * カタログidに依存しない固定idにして、どのKPIが選ばれても同じDOM要素を使い回す。
+ */
+const primaryLabelId = `${sourceId}-primary-label`;
+const primaryValueId = `${sourceId}-primary-value`;
+const primaryChartId = `${sourceId}-primary-chart`;
+
+// 内訳: primaryItemが内訳を持つ場合のみ、初期表示するグリッドを決める
+const initialBreakdownForId = primaryItem && breakdowns?.has(primaryItem.id) ? primaryItem.id : undefined;
 
 // 日別/週別/月別セレクター（見た目のみ。データ連動は未実装）
 const periodDateId = `${sourceId}-period-date`;
@@ -64,20 +78,62 @@ const periodOptions = [
 				primaryItem && (
 					<div id={primaryPaneId} class="kpi-pane kpi-pane--primary">
 						<dl class="kpi-primary">
-							<dt>{primaryItem.label}</dt>
-							<dd id={primaryItem.id} class="value">
+							<dt id={primaryLabelId}>{primaryItem.label}</dt>
+							<dd id={primaryValueId} class="value">
 								取得中...
 							</dd>
 						</dl>
 						{primaryItem.chart && (
 							<svg
-								id={primaryItem.chart.id}
+								id={primaryChartId}
 								class="trend-chart"
 								viewBox="0 0 320 120"
 								preserveAspectRatio="xMidYMid meet"
 								role="img"
 								aria-label={primaryItem.chart.ariaLabel}
 							/>
+						)}
+
+						{breakdowns && (
+							<div class="kpi-breakdown">
+								{[...breakdowns.entries()].map(([forId, groups]) => (
+									<div class="kpi-breakdown-set" data-breakdown-for={forId} hidden={forId !== initialBreakdownForId}>
+										{groups.care && (
+											<section class="kpi-breakdown-grid" aria-label="ケア区分の内訳">
+												<h3 class="kpi-breakdown-title">ケア区分の内訳</h3>
+												<div class="kpi-breakdown-cards">
+													{groups.care.items.map((b) => (
+														<div class="kpi-breakdown-card">
+															<p class="kpi-breakdown-label">{b.label}</p>
+															<p class="kpi-breakdown-value" id={b.id}>
+																取得中...
+															</p>
+														</div>
+													))}
+												</div>
+											</section>
+										)}
+										{groups.ward && (
+											<section class="kpi-breakdown-grid" aria-label="病棟別の内訳">
+												<h3 class="kpi-breakdown-title">病棟別の内訳</h3>
+												<div class="kpi-breakdown-cards">
+													{groups.ward.items.map((b) => (
+														<div class="kpi-breakdown-card">
+															<p class="kpi-breakdown-label">{b.label}</p>
+															<p class="kpi-breakdown-value" id={b.id}>
+																取得中...
+															</p>
+														</div>
+													))}
+												</div>
+											</section>
+										)}
+									</div>
+								))}
+								<p class="kpi-breakdown-empty" data-breakdown-empty hidden={initialBreakdownForId !== undefined}>
+									この指標には内訳がありません
+								</p>
+							</div>
 						)}
 					</div>
 				)
@@ -114,43 +170,29 @@ const periodOptions = [
 
 				<h2 class="kpi-cards-title">指標一覧</h2>
 
-				<dl class="kpi-cards">
+				<div class="kpi-cards" role="listbox" aria-label={`${label}の指標一覧。選択した項目を主指標として表示`}>
 					{
 						cardItems.map((item) => {
-							/*
-							 * 1列目に出している指標は、この一覧にも同じ値で並ぶ。
-							 * id は文書内で1つしか置けないので、控えの側は data-kpi で拾わせる
-							 * （FacilityKpiDataLoader が両方に同じ文字列を書く）。
-							 * グラフも1列目にあるものが正本なので、控えには描かない。
-							 */
 							const isShownAsPrimary = item.id === primaryItem?.id;
 
 							return (
 								<div
-									class:list={['kpi-row', { 'kpi-row--selected': isShownAsPrimary }]}
-									aria-current={isShownAsPrimary ? 'true' : undefined}
+									class="kpi-row"
+									role="option"
+									data-kpi-id={item.id}
+									aria-selected={isShownAsPrimary ? 'true' : 'false'}
+									tabindex={isShownAsPrimary ? 0 : -1}
 								>
-									<dt>{item.label}</dt>
-									{isShownAsPrimary ? (
-										<dd data-kpi={item.id}>取得中...</dd>
-									) : (
-										<dd id={item.id}>取得中...</dd>
-									)}
-									{!isShownAsPrimary && item.chart && (
-										<svg
-											id={item.chart.id}
-											class="trend-chart"
-											viewBox="0 0 320 120"
-											preserveAspectRatio="xMidYMid meet"
-											role="img"
-											aria-label={item.chart.ariaLabel}
-										/>
-									)}
+									<p class="kpi-row-label">{item.label}</p>
+									<p class="kpi-row-value" id={item.id}>
+										取得中...
+									</p>
+									<p class="kpi-row-current">主指標に表示中</p>
 								</div>
 							);
 						})
 					}
-				</dl>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -485,17 +527,59 @@ const periodOptions = [
 		background: #fdfdfd;
 		border-radius: var(--panel-radius);
 		padding: 12px 6px;
+		/* クリックで主指標を切り替えられる対話要素になった */
+		cursor: pointer;
+	}
+
+	@media (hover: hover) {
+		.kpi-row:hover {
+			background: var(--panel-surface);
+		}
 	}
 
 	/*
 	 * 今どれを1列目に出しているかを示す。
 	 * border ではなく内側の影で描く。border だと2px ぶん中身がずれ、
 	 * 選択が移るたびにカードの高さと文字位置が動いてしまう。
+	 * 色は --app-nav-edge を流用する（意味の広げ方は global.css 側のコメント参照）。
 	 */
-	.kpi-row--selected {
-		box-shadow: inset 0 0 0 2px #0a0a0a;
+	.kpi-row[aria-selected='true'] {
+		box-shadow: inset 0 0 0 2px var(--app-nav-edge);
 	}
 
+	/* フォーカスリングは「選択」とは別の状態。選択色（赤）を使わず既存の黒に揃える */
+	.kpi-row:focus-visible {
+		outline: 2px solid #0a0a0a;
+		outline-offset: 2px;
+	}
+
+	.kpi-row-label {
+		margin: 0;
+		font-size: 18px;
+		font-weight: 700;
+		line-height: 1.4;
+	}
+
+	.kpi-row-value {
+		margin: 6px 0 0;
+		font-size: 24px;
+		font-weight: 700;
+		line-height: 1.2;
+	}
+
+	.kpi-row-current {
+		display: none;
+		margin: 4px 0 0;
+		color: #526070;
+		font-size: 13px;
+		font-weight: 700;
+	}
+
+	.kpi-row[aria-selected='true'] .kpi-row-current {
+		display: block;
+	}
+
+	/* primary pane（.kpi-primary）は今も dt/dd のまま */
 	dt {
 		font-size: 18px;
 		font-weight: 700;
@@ -507,6 +591,61 @@ const periodOptions = [
 		font-size: 24px;
 		font-weight: 700;
 		line-height: 1.2;
+	}
+
+	/* --- 内訳グリッド --- */
+	.kpi-breakdown {
+		margin-top: var(--panel-padding);
+	}
+
+	.kpi-breakdown-set + .kpi-breakdown-set {
+		margin-top: var(--panel-padding);
+	}
+
+	.kpi-breakdown-grid + .kpi-breakdown-grid {
+		margin-top: 16px;
+	}
+
+	.kpi-breakdown-title {
+		margin: 0 0 8px;
+		color: #526070;
+		font-size: 16px;
+		font-weight: 700;
+		line-height: 1.4;
+	}
+
+	.kpi-breakdown-cards {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+		gap: 8px;
+	}
+
+	.kpi-breakdown-card {
+		background: #fdfdfd;
+		border-radius: var(--panel-radius);
+		padding: 8px 10px;
+	}
+
+	.kpi-breakdown-label {
+		margin: 0;
+		color: #526070;
+		font-size: 13px;
+		font-weight: 700;
+	}
+
+	.kpi-breakdown-value {
+		margin: 4px 0 0;
+		font-size: 20px;
+		font-weight: 700;
+		line-height: 1.2;
+	}
+
+	/* 「この指標には内訳がありません」。既存の #526070 系キャプション（.label/.date/.status）と同じトーン */
+	.kpi-breakdown-empty {
+		margin: 0;
+		color: #526070;
+		font-size: 13px;
+		font-weight: 700;
 	}
 
 	/*

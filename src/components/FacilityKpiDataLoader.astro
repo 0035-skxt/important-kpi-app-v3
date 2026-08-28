@@ -1,13 +1,23 @@
 <script type="module">
 	import { kyoritsuDataSource } from '../lib/datasources/kyoritsu';
 	import { rehaDataSource } from '../lib/datasources/reha';
-	import { boardDateId, boardStatusId, kyoritsuBoardItems, rehaBoardItems } from '../lib/facility-board';
-	import { loadFacilityView } from '../lib/kpi-values';
-	import { clearBedUsageTrend, renderBedUsageTrend } from '../lib/trend-chart';
+	import {
+		boardDateId,
+		boardStatusId,
+		kyoritsuBoardItems,
+		rehaBoardItems,
+		rehaBreakdownMap,
+	} from '../lib/facility-board';
+	import { buildTrendForKpi, loadFacilityView } from '../lib/kpi-values';
+	import { clearTrend, renderTrend } from '../lib/trend-chart';
 
+	// items は施設ごとの全件リスト（reha=21件/kyoritsu=9件、内訳16件を含む）。
+	// 一覧カードに出す5件だけでなく、内訳カードの値も同じループで埋める。
+	// breakdowns はreha専用。kyoritsuには内訳が無いので undefined のまま
+	// （FacilityKpiBoard側もbreakdowns未指定なら内訳DOM自体を描かないので、以降の処理は自然にno-op）。
 	const FACILITIES = [
-		{ source: kyoritsuDataSource, items: kyoritsuBoardItems },
-		{ source: rehaDataSource, items: rehaBoardItems },
+		{ source: kyoritsuDataSource, items: kyoritsuBoardItems, breakdowns: undefined },
+		{ source: rehaDataSource, items: rehaBoardItems, breakdowns: rehaBreakdownMap },
 	];
 
 	function setText(id, text) {
@@ -15,31 +25,179 @@
 		if (element) {
 			element.textContent = text;
 		}
+	}
 
-		// 主指標は1列目と指標一覧の両方に出る。id は文書内で1つしか置けないため、
-		// 控えの側は data-kpi で拾って同じ文字列を書く。
-		for (const mirror of document.querySelectorAll(`[data-kpi="${id}"]`)) {
-			mirror.textContent = text;
+	/** クリック/初期化された id を items（全件リスト）から探す。一覧5件・内訳16件どちらも同じ配列にいる */
+	function findItem(items, id) {
+		return items.find((item) => item.id === id);
+	}
+
+	/** 一覧カードの aria-selected / roving tabindex を張り替える */
+	function syncCardSelection(section, id) {
+		const listbox = section.querySelector('[role="listbox"]');
+		if (!listbox) {
+			return;
+		}
+
+		for (const option of listbox.querySelectorAll('[role="option"]')) {
+			const isSelected = option.dataset.kpiId === id;
+			option.setAttribute('aria-selected', String(isSelected));
+			option.tabIndex = isSelected ? 0 : -1;
 		}
 	}
 
-	async function load({ source, items }) {
-		const chartItem = items.find((item) => item.chart);
+	/**
+	 * 主指標が在院数/平均在院日数のときだけ、対応する内訳セットを表示する。
+	 * それ以外（内訳を持たない指標）が選ばれたときは全セットを隠し、
+	 * 「この指標には内訳がありません」を出す。
+	 * breakdowns 自体が無い施設（kyoritsu）では section 内に .kpi-breakdown が無いため no-op。
+	 */
+	function syncBreakdownVisibility(section, id) {
+		const breakdown = section.querySelector('.kpi-breakdown');
+		if (!breakdown) {
+			return;
+		}
+
+		let matched = false;
+
+		for (const set of breakdown.querySelectorAll('[data-breakdown-for]')) {
+			const isMatch = set.dataset.breakdownFor === id;
+			set.hidden = !isMatch;
+			matched = matched || isMatch;
+		}
+
+		const empty = breakdown.querySelector('[data-breakdown-empty]');
+		if (empty) {
+			empty.hidden = matched;
+		}
+	}
+
+	/** primary paneの見出し・数値・モバイル幅タブの文言を、既に持っている values からコピーする（再フェッチ不要） */
+	function syncPrimaryLabelAndValue(source, item, values) {
+		const labelEl = document.getElementById(`${source.id}-primary-label`);
+		if (labelEl) {
+			labelEl.textContent = item.label;
+		}
+
+		setText(`${source.id}-primary-value`, values.get(item.id) ?? '--');
+
+		// 狭い画面のタブボタンは「今1列目に出ているKPI名」を示すため、更新を忘れると病床利用率のまま固定される
+		const tabButton = document.getElementById(`${source.id}-tab-primary`);
+		if (tabButton) {
+			tabButton.textContent = item.label;
+		}
+	}
+
+	/** primary paneのトレンドグラフを差し替える。chartを持たない項目が選ばれたら消す（安全策） */
+	function syncPrimaryChart(source, item, trend) {
+		const chartId = `${source.id}-primary-chart`;
+		const svg = document.getElementById(chartId);
+
+		if (!item.chart) {
+			clearTrend(chartId);
+			// 空にした後もaria-labelが前の指標名のまま残ると、スクリーンリーダーに
+			// 存在しないグラフの説明を読み上げさせてしまう（kyoritsuはchartを持つ項目が
+			// 病床利用率1件だけなので、他8件へ切り替えるとここを通る）。
+			svg?.removeAttribute('aria-label');
+			return;
+		}
+
+		renderTrend(chartId, trend, item.chart.valueKind);
+		svg?.setAttribute('aria-label', item.chart.ariaLabel);
+	}
+
+	/** クリック操作。選択状態・内訳・見出し/数値・グラフをまとめて切り替える */
+	function selectPrimary(facility, section, id, values, rows) {
+		const item = findItem(facility.items, id);
+		if (!item) {
+			return;
+		}
+
+		syncCardSelection(section, id);
+		syncBreakdownVisibility(section, id);
+		syncPrimaryLabelAndValue(facility.source, item, values);
+
+		// rows が空（初回fetch失敗時）だと getLatestWideRow/getLatestLongRows が
+		// 「最新行が無い」例外を投げる。buildTrendForKpi はそれをそのまま伝播するため、
+		// rows が無い場合は呼ばずに「データなし」表示へ委ねる。
+		const trend = item.chart && rows.length > 0 ? buildTrendForKpi(facility.source, rows, id) : [];
+		syncPrimaryChart(facility.source, item, trend);
+	}
+
+	/** 一覧カードへクリック/キーボード操作を付ける。values/rows はこの時点の最新値を閉じ込める */
+	function setUpCardInteractions(facility, section, values, rows) {
+		const listbox = section.querySelector('[role="listbox"]');
+		if (!listbox) {
+			return;
+		}
+
+		const options = [...listbox.querySelectorAll('[role="option"]')];
+
+		function activate(option) {
+			const id = option.dataset.kpiId;
+			// 同じ選択を選び直しても何もしない（冪等）
+			if (!id || option.getAttribute('aria-selected') === 'true') {
+				return;
+			}
+			selectPrimary(facility, section, id, values, rows);
+		}
+
+		for (const [index, option] of options.entries()) {
+			option.addEventListener('click', () => activate(option));
+
+			option.addEventListener('keydown', (event) => {
+				if (event.key === 'Enter' || event.key === ' ') {
+					event.preventDefault();
+					activate(option);
+					return;
+				}
+
+				const step =
+					event.key === 'ArrowRight' || event.key === 'ArrowDown'
+						? 1
+						: event.key === 'ArrowLeft' || event.key === 'ArrowUp'
+							? -1
+							: 0;
+
+				if (step === 0) {
+					return;
+				}
+
+				event.preventDefault();
+				const next = options[(index + step + options.length) % options.length];
+				next.focus();
+			});
+		}
+	}
+
+	async function load(facility) {
+		const { source, items } = facility;
+		const chartItem = items.find((item) => item.isPrimary);
 		const dateId = boardDateId(source.id);
 		const statusId = boardStatusId(source.id);
+		const section = document.getElementById(dateId)?.closest('.kpi') ?? null;
+
+		// fetch失敗時でもクリック操作自体は壊さない。空のまま渡せば「データなし」表示に自然に落ちる
+		let rows = [];
+		let values = new Map();
 
 		try {
 			const view = await loadFacilityView(source, { trendKpiId: chartItem?.id });
+			rows = view.rows;
+			values = view.values;
 
 			for (const item of items) {
-				setText(item.id, view.values.get(item.id) ?? '--');
+				setText(item.id, values.get(item.id) ?? '--');
 			}
 
 			setText(dateId, `日付: ${view.date}`);
 			setText(statusId, '最新データを表示しています');
 
-			if (chartItem) {
-				renderBedUsageTrend(chartItem.chart.id, view.trend);
+			if (section && chartItem) {
+				syncCardSelection(section, chartItem.id);
+				syncBreakdownVisibility(section, chartItem.id);
+				syncPrimaryLabelAndValue(source, chartItem, values);
+				syncPrimaryChart(source, chartItem, view.trend);
 			}
 		} catch (error) {
 			console.error(`${source.id} KPI fetch/render failed:`, error);
@@ -51,9 +209,13 @@
 			setText(dateId, '日付: --');
 			setText(statusId, 'データを取得できませんでした');
 
-			if (chartItem) {
-				clearBedUsageTrend(chartItem.chart.id);
+			if (chartItem?.chart) {
+				clearTrend(`${source.id}-primary-chart`);
 			}
+		}
+
+		if (section) {
+			setUpCardInteractions(facility, section, values, rows);
 		}
 	}
 

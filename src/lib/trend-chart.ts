@@ -1,20 +1,51 @@
 import { line, scaleLinear, scalePoint, select } from 'd3';
+import type { KpiCatalogChartValueKind } from './kpi-catalog';
 import type { TrendPoint } from './kpi-values';
 
 const WIDTH = 320;
 const HEIGHT = 120;
 const MARGIN = { top: 10, right: 10, bottom: 20, left: 34 };
 
+/** カタログの chart.valueKind と同じ語彙。省略時は 'count' 扱い */
+export type TrendValueKind = KpiCatalogChartValueKind;
+
+type ValueFormat = {
+	tick: (value: number) => string;
+	tooltip: (value: number) => string;
+	/** 比率だけが物理的に 0〜1 という上限を持つ。人数・日数には固定クランプを付けない
+	 *  （yMin/yMax 計算側の padding が自動的に余白を付けるため、それで十分） */
+	clampMin?: number;
+	clampMax?: number;
+};
+
+const FORMATS: Record<TrendValueKind, ValueFormat> = {
+	ratio: {
+		tick: (v) => `${(v * 100).toFixed(0)}%`,
+		tooltip: (v) => `${(v * 100).toFixed(1)}%`,
+		clampMin: 0,
+		clampMax: 1,
+	},
+	count: {
+		tick: (v) => `${Math.round(v)}`,
+		tooltip: (v) => `${Math.round(v)}`,
+	},
+	days: {
+		tick: (v) => v.toFixed(1),
+		tooltip: (v) => `${v.toFixed(1)}日`,
+	},
+};
+
 function formatTick(dateKey: string): string {
 	const date = new Date(`${dateKey}T00:00:00Z`);
 	return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 }
 
-export function clearBedUsageTrend(svgId: string): void {
+export function clearTrend(svgId: string): void {
 	select(`#${svgId}`).selectAll('*').remove();
 }
 
-export function renderBedUsageTrend(svgId: string, trend: TrendPoint[]): void {
+export function renderTrend(svgId: string, trend: TrendPoint[], valueKind: TrendValueKind = 'count'): void {
+	const format = FORMATS[valueKind];
 	const svg = select(`#${svgId}`);
 	svg.selectAll('*').remove();
 
@@ -42,8 +73,8 @@ export function renderBedUsageTrend(svgId: string, trend: TrendPoint[]): void {
 	const rawMin = Math.min(...values);
 	const rawMax = Math.max(...values);
 	const padding = Math.max((rawMax - rawMin) * 0.2, 0.02);
-	const yMin = Math.max(0, rawMin - padding);
-	const yMax = Math.min(1, rawMax + padding);
+	const yMin = format.clampMin !== undefined ? Math.max(format.clampMin, rawMin - padding) : rawMin - padding;
+	const yMax = format.clampMax !== undefined ? Math.min(format.clampMax, rawMax + padding) : rawMax + padding;
 
 	const x = scalePoint<string>()
 		.domain(trend.map((point) => point.date))
@@ -70,7 +101,7 @@ export function renderBedUsageTrend(svgId: string, trend: TrendPoint[]): void {
 		.attr('y', (tick) => y(tick))
 		.attr('dominant-baseline', 'middle')
 		.attr('text-anchor', 'end')
-		.text((tick) => `${(tick * 100).toFixed(0)}%`);
+		.text((tick) => format.tick(tick));
 
 	const tickDates = trend.filter((_, i) => i % 3 === 0 || i === trend.length - 1).map((point) => point.date);
 
@@ -100,7 +131,7 @@ export function renderBedUsageTrend(svgId: string, trend: TrendPoint[]): void {
 		.attr('r', 2.5)
 		.attr('tabindex', 0);
 
-	points.append('title').text((point) => `${formatTick(point.date)}: ${((point.value ?? 0) * 100).toFixed(1)}%`);
+	points.append('title').text((point) => `${formatTick(point.date)}: ${format.tooltip(point.value ?? 0)}`);
 
 	const missing = g
 		.selectAll('.trend-missing')
@@ -126,7 +157,7 @@ export function renderBedUsageTrend(svgId: string, trend: TrendPoint[]): void {
 		const label =
 			point.value == null
 				? `${formatTick(point.date)}: データなし`
-				: `${formatTick(point.date)}: ${(point.value * 100).toFixed(1)}%`;
+				: `${formatTick(point.date)}: ${format.tooltip(point.value)}`;
 
 		tooltipText.text(label);
 

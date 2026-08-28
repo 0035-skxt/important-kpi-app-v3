@@ -27,7 +27,7 @@ const { sourceId, label, items, href } = Astro.props;
 						取得中...
 					</dd>
 					{
-						item.chart && (
+						item.isPrimary && item.chart && (
 							<svg
 								id={item.chart.id}
 								class="trend-chart"

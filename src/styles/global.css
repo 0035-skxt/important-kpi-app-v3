@@ -23,7 +23,9 @@
 	 * 狭い画面では 0 にして帯を畳み、ヘッダー左上のボタンから開く。
 	 */
 	--app-sidebar-width: 64px;
-	/* メニュー帯がパネルと面する辺の色。使うのは AppNav.astro だけ */
+	/* メニュー帯がパネルと面する辺の色。
+	 * 選択強調にも意味を広げて流用している（FacilityKpiBoard の .kpi-row[aria-selected='true']）。
+	 * 赤を新規に増やさず、既存の「強調に使う唯一の赤」をそのまま使い回す方針。 */
 	--app-nav-edge: #c0392b;
 	/* 施設切り替えボタン群の仕切り線・枠線の色。使うのは AppNav.astro だけ */
 	--app-nav-group-border: #d8dde3;
