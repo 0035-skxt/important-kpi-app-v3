@@ -41,113 +41,181 @@ const DATA_FIELD_REHA = {
 
 <Layout>
 	<main class="page">
-		<section class="kpi" aria-live="polite">
-			<h1 class="label">戸畑共立病院</h1>
 
-			<dl>
-				<dt>病床利用率</dt>
-				<dd id="kyoritsu-bed-usage" class="value">取得中...</dd>
+		<header class="header">
+			<h1>重要指標ダッシュボード</h1>
+		</header>
 
-				<dt>救急車搬入数</dt>
-				<dd id="kyoritsu-ambulance-transport">取得中...</dd>
+		<div class="layout">
 
-				<dt>入院患者数</dt>
-				<dd id="kyoritsu-excepted-impatient">取得中...</dd>
+			<section class="kpi" aria-live="polite">
+				<h1 class="label">戸畑共立病院</h1>
 
-				<dt>退院予定数</dt>
-				<dd id="kyoritsu-excepted-discharges">取得中...</dd>
+				<dl class="kpi-grid">
+					<div class="kpi-row">
+						<dt>病床利用率</dt>
+						<dd id="kyoritsu-bed-usage" class="value">取得中...</dd>
+					</div>
 
-				<dt>一般病棟在院数</dt>
-				<dd id="kyoritsu-general-inpatient">取得中...</dd>
+					<div class="kpi-row">
+						<dt>救急車搬入数</dt>
+						<dd id="kyoritsu-ambulance-transport">取得中...</dd>
+					</div>
 
-				<dt>集中治療室在院数</dt>
-				<dd id="kyoritsu-icu-impatient">取得中...</dd>
+					<div class="kpi-row">
+						<dt>入院患者数</dt>
+						<dd id="kyoritsu-excepted-impatient">取得中...</dd>
+					</div>
 
-				<dt>平均在院日数</dt>
-				<dd id="kyoritsu-average-stay">取得中...</dd>
+					<div class="kpi-row">
+						<dt>退院予定数</dt>
+						<dd id="kyoritsu-excepted-discharges">取得中...</dd>
+					</div>
 
-				<dt>手術件数</dt>
-				<dd id="kyoritsu-surgeries">取得中...</dd>
+					<div class="kpi-row">
+						<dt>一般病棟在院数</dt>
+						<dd id="kyoritsu-general-inpatient">取得中...</dd>
+					</div>
 
-				<dt>長期入院者数（30日）</dt>
-				<dd id="kyoritsu-long-term-inpatients">取得中...</dd>
-			</dl>
+					<div class="kpi-row">
+						<dt>集中治療室在院数</dt>
+						<dd id="kyoritsu-icu-impatient">取得中...</dd>
+					</div>
 
-			<p id="kyoritsu-target-date" class="date">日付: --</p>
-			<p id="kyoritsu-status" class="status">APIから最新データを取得しています</p>
-		</section>
+					<div class="kpi-row">
+						<dt>平均在院日数</dt>
+						<dd id="kyoritsu-average-stay">取得中...</dd>
+					</div>
 
-		<section class="kpi" aria-live="polite">
-			<h1 class="label">戸畑リハビリテーション病院</h1>
+					<div class="kpi-row">
+						<dt>手術件数</dt>
+						<dd id="kyoritsu-surgeries">取得中...</dd>
+					</div>
 
-			<dl>
-				<dt>病床利用率</dt>
-				<dd id="reha-bed-usage" class="value">取得中...</dd>
+					<div class="kpi-row">
+						<dt>長期入院者数（30日）</dt>
+						<dd id="kyoritsu-long-term-inpatients">取得中...</dd>
+					</div>
+				</dl>
 
-				<dt>在院数</dt>
-				<dd id="reha-inpatient">取得中...</dd>
+				<p id="kyoritsu-target-date" class="date">日付: --</p>
+				<p id="kyoritsu-status" class="status">APIから最新データを取得しています</p>
+			</section>
 
-				<dt>入院患者数</dt>
-				<dd id="reha-excepted-impatient">取得中...</dd>
+			<section class="kpi" aria-live="polite">
+				<h1 class="label">戸畑リハビリテーション病院</h1>
 
-				<dt>退院予定数</dt>
-				<dd id="reha-excepted-discharges">取得中...</dd>
+				<dl class="kpi-grid">
+					<div class="kpi-row">
+						<dt>病床利用率</dt>
+						<dd id="reha-bed-usage" class="value">取得中...</dd>
+					</div>
 
-				<dt>平均在院日数</dt>
-				<dd id="reha-average-stay">取得中...</dd>
+					<div class="kpi-row">
+						<dt>在院数</dt>
+						<dd id="reha-inpatient">取得中...</dd>
+					</div>
 
-				<dt>地域包括ケア在院数</dt>
-				<dd id="reha-community-inpatient">取得中...</dd>
+					<div class="kpi-row">
+						<dt>入院患者数</dt>
+						<dd id="reha-excepted-impatient">取得中...</dd>
+					</div>
 
-				<dt>地域包括ケア平均在院日数</dt>
-				<dd id="reha-community-average-stay">取得中...</dd>
+					<div class="kpi-row">
+						<dt>退院予定数</dt>
+						<dd id="reha-excepted-discharges">取得中...</dd>
+					</div>
 
-				<dt>回復期在院数</dt>
-				<dd id="reha-rehabilitation-inpatient">取得中...</dd>
+					<div class="kpi-row">
+						<dt>平均在院日数</dt>
+						<dd id="reha-average-stay">取得中...</dd>
+					</div>
 
-				<dt>回復期平均在院日数</dt>
-				<dd id="reha-rehabilitation-average-stay">取得中...</dd>
+					<div class="kpi-row">
+						<dt>地域包括ケア在院数</dt>
+						<dd id="reha-community-inpatient">取得中...</dd>
+					</div>
 
-				<dt>緩和ケア在院数</dt>
-				<dd id="reha-palliative-inpatient">取得中...</dd>
+					<div class="kpi-row">
+						<dt>地域包括ケア平均在院日数</dt>
+						<dd id="reha-community-average-stay">取得中...</dd>
+					</div>
 
-				<dt>緩和ケア平均在院日数</dt>
-				<dd id="reha-palliative-average-stay">取得中...</dd>
+					<div class="kpi-row">
+						<dt>回復期在院数</dt>
+						<dd id="reha-rehabilitation-inpatient">取得中...</dd>
+					</div>
 
-				<dt>2階北在院数</dt>
-				<dd id="reha-floor-2-north-inpatient">取得中...</dd>
+					<div class="kpi-row">
+						<dt>回復期平均在院日数</dt>
+						<dd id="reha-rehabilitation-average-stay">取得中...</dd>
+					</div>
 
-				<dt>2階北平均在院日数</dt>
-				<dd id="reha-floor-2-north-average-stay">取得中...</dd>
+					<div class="kpi-row">
+						<dt>緩和ケア在院数</dt>
+						<dd id="reha-palliative-inpatient">取得中...</dd>
+					</div>
 
-				<dt>2階南在院数</dt>
-				<dd id="reha-floor-2-south-inpatient">取得中...</dd>
+					<div class="kpi-row">
+						<dt>緩和ケア平均在院日数</dt>
+						<dd id="reha-palliative-average-stay">取得中...</dd>
+					</div>
 
-				<dt>2階南平均在院日数</dt>
-				<dd id="reha-floor-2-south-average-stay">取得中...</dd>
+					<div class="kpi-row">
+						<dt>2階北在院数</dt>
+						<dd id="reha-floor-2-north-inpatient">取得中...</dd>
+					</div>
 
-				<dt>3階在院数</dt>
-				<dd id="reha-floor-3-inpatient">取得中...</dd>
+					<div class="kpi-row">
+						<dt>2階北平均在院日数</dt>
+						<dd id="reha-floor-2-north-average-stay">取得中...</dd>
+					</div>
 
-				<dt>3階平均在院日数</dt>
-				<dd id="reha-floor-3-average-stay">取得中...</dd>
+					<div class="kpi-row">
+						<dt>2階南在院数</dt>
+						<dd id="reha-floor-2-south-inpatient">取得中...</dd>
+					</div>
 
-				<dt>4階在院数</dt>
-				<dd id="reha-floor-4-inpatient">取得中...</dd>
+					<div class="kpi-row">
+						<dt>2階南平均在院日数</dt>
+						<dd id="reha-floor-2-south-average-stay">取得中...</dd>
+					</div>
 
-				<dt>4階北平均在院日数</dt>
-				<dd id="reha-floor-4-north-average-stay">取得中...</dd>
+					<div class="kpi-row">
+						<dt>3階在院数</dt>
+						<dd id="reha-floor-3-inpatient">取得中...</dd>
+					</div>
 
-				<dt>5階在院数</dt>
-				<dd id="reha-floor-5-inpatient">取得中...</dd>
+					<div class="kpi-row">
+						<dt>3階平均在院日数</dt>
+						<dd id="reha-floor-3-average-stay">取得中...</dd>
+					</div>
 
-				<dt>5階平均在院日数</dt>
-				<dd id="reha-floor-5-average-stay">取得中...</dd>
-			</dl>
+					<div class="kpi-row">
+						<dt>4階在院数</dt>
+						<dd id="reha-floor-4-inpatient">取得中...</dd>
+					</div>
 
-			<p id="reha-target-date" class="date">日付: --</p>
-			<p id="reha-status" class="status">APIから最新データを取得しています</p>
-		</section>
+					<div class="kpi-row">
+						<dt>4階北平均在院日数</dt>
+						<dd id="reha-floor-4-north-average-stay">取得中...</dd>
+					</div>
+
+					<div class="kpi-row">
+						<dt>5階在院数</dt>
+						<dd id="reha-floor-5-inpatient">取得中...</dd>
+					</div>
+
+					<div class="kpi-row">
+						<dt>5階平均在院日数</dt>
+						<dd id="reha-floor-5-average-stay">取得中...</dd>
+					</div>
+				</dl>
+
+				<p id="reha-target-date" class="date">日付: --</p>
+				<p id="reha-status" class="status">APIから最新データを取得しています</p>
+			</section>
+		</div>
 	</main>
 
 	<script define:vars={{ DATA_FIELD_KYORITSU, DATA_FIELD_REHA }}>
@@ -363,18 +431,47 @@ const DATA_FIELD_REHA = {
 			BlinkMacSystemFont,
 			'Segoe UI',
 			sans-serif;
-		color: #172033;
-		background: #f7f9fb;
+		color: #0a0a0a;
+		background: #fafafa;
 	}
 
 	.page {
 		box-sizing: border-box;
 		min-height: 100vh;
+	}
+
+	.header {
+		padding: 12px 24px;
+	}
+
+
+	.layout {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		align-items: start;
 		gap: 24px;
 		padding: 24px;
+	}
+
+	.kpi-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		align-items: start;
+		gap: 24px;
+		padding: 24px;
+	}
+
+	.kpi-row {
+		align-self: stretch;
+		background: #efefef;
+		border-radius: 4pt;
+		padding: 12px 6px;
+	}
+
+	.kpi-grid > .kpi-row:first-child {
+		background: transparent;
+		grid-column: 1 / -1;
+		padding: 0;
 	}
 
 	.kpi {
@@ -400,12 +497,7 @@ const DATA_FIELD_REHA = {
 		line-height: 1.2;
 	}
 
-	dl {
-		margin: 24px 0 0;
-	}
-
 	dt {
-		margin-top: 18px;
 		font-size: 18px;
 		font-weight: 700;
 		line-height: 1.4;
