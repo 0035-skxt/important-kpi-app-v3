@@ -1,42 +1,5 @@
 ---
 import Layout from '../layouts/Layout.astro';
-
-const DATA_FIELD_KYORITSU = {
-	DATE: "日付",
-	BED_USAGE: "病床利用率 (%)",
-	AMBULANCE_TRANSPORT: "救急車搬入数",
-	EXCEPTED_IMPATIENT: "入院患者数",
-	EXCEPTED_DISCHARGES: "退院予定数",
-	GENERAL_INPATIENT: "一般病棟在院数",
-	ICU_IMPATIENT: "集中治療室在院数",
-	AVERAGE_STAY: "平均在院日数",
-	SURGERIES: "手術件数",
-	LONG_TERM_INPATIENTS: "長期入院者数（30日）",
-} as const;
-
-const DATA_FIELD_REHA = {
-	BED_USAGE: "病床利用率",
-	INPATIENT: "在院数",
-	EXCEPTED_IMPATIENT: "入院患者数",
-	EXCEPTED_DISCHARGES: "退院予定数",
-	AVERAGE_STAY: "平均在院日数",
-	COMMUNITY_INPATIENT: "地域包括ケア在院数",
-	COMMUNITY_AVERAGE_STAY: "地域包括ケア平均在院日数",
-	REHABILITATION_INPATIENT: "回復期在院数",
-	REHABILITATION_AVERAGE_STAY: "回復期平均在院日数",
-	PALLIATIVE_INPATIENT: "緩和ケア在院数",
-	PALLIATIVE_AVERAGE_STAY: "緩和ケア平均在院日数",
-	FLOOR_2_NORTH_INPATIENT: "2階北在院数",
-	FLOOR_2_NORTH_AVERAGE_STAY: "2階北平均在院日数",
-	FLOOR_2_SOUTH_INPATIENT: "2階南在院数",
-	FLOOR_2_SOUTH_AVERAGE_STAY: "2階南平均在院日数",
-	FLOOR_3_INPATIENT: "3階在院数",
-	FLOOR_3_AVERAGE_STAY: "3階平均在院日数",
-	FLOOR_4_INPATIENT: "4階在院数",
-	FLOOR_4_NORTH_AVERAGE_STAY: "4階北平均在院日数",
-	FLOOR_5_INPATIENT: "5階在院数",
-	FLOOR_5_AVERAGE_STAY: "5階平均在院日数",
-} as const;
 ---
 
 <Layout>
@@ -55,6 +18,14 @@ const DATA_FIELD_REHA = {
 					<div class="kpi-row">
 						<dt>病床利用率</dt>
 						<dd id="kyoritsu-bed-usage" class="value">取得中...</dd>
+						<svg
+							id="kyoritsu-bed-usage-chart"
+							class="trend-chart"
+							viewBox="0 0 320 120"
+							preserveAspectRatio="xMidYMid meet"
+							role="img"
+							aria-label="病床利用率の14日間推移グラフ"
+						></svg>
 					</div>
 
 					<div class="kpi-row">
@@ -109,6 +80,14 @@ const DATA_FIELD_REHA = {
 					<div class="kpi-row">
 						<dt>病床利用率</dt>
 						<dd id="reha-bed-usage" class="value">取得中...</dd>
+						<svg
+							id="reha-bed-usage-chart"
+							class="trend-chart"
+							viewBox="0 0 320 120"
+							preserveAspectRatio="xMidYMid meet"
+							role="img"
+							aria-label="病床利用率の14日間推移グラフ"
+						></svg>
 					</div>
 
 					<div class="kpi-row">
@@ -218,7 +197,47 @@ const DATA_FIELD_REHA = {
 		</div>
 	</main>
 
-	<script define:vars={{ DATA_FIELD_KYORITSU, DATA_FIELD_REHA }}>
+	<script type="module">
+		import { select, scalePoint, scaleLinear, extent, line } from 'd3';
+
+		const DATA_FIELD_KYORITSU = {
+			DATE: '日付',
+			BED_USAGE: '病床利用率 (%)',
+			AMBULANCE_TRANSPORT: '救急車搬入数',
+			EXCEPTED_IMPATIENT: '入院患者数',
+			EXCEPTED_DISCHARGES: '退院予定数',
+			GENERAL_INPATIENT: '一般病棟在院数',
+			ICU_IMPATIENT: '集中治療室在院数',
+			AVERAGE_STAY: '平均在院日数',
+			SURGERIES: '手術件数',
+			LONG_TERM_INPATIENTS: '長期入院者数（30日）',
+		};
+
+		const DATA_FIELD_REHA = {
+			BED_USAGE: '病床利用率',
+			INPATIENT: '在院数',
+			EXCEPTED_IMPATIENT: '入院患者数',
+			EXCEPTED_DISCHARGES: '退院予定数',
+			AVERAGE_STAY: '平均在院日数',
+			COMMUNITY_INPATIENT: '地域包括ケア在院数',
+			COMMUNITY_AVERAGE_STAY: '地域包括ケア平均在院日数',
+			REHABILITATION_INPATIENT: '回復期在院数',
+			REHABILITATION_AVERAGE_STAY: '回復期平均在院日数',
+			PALLIATIVE_INPATIENT: '緩和ケア在院数',
+			PALLIATIVE_AVERAGE_STAY: '緩和ケア平均在院日数',
+			FLOOR_2_NORTH_INPATIENT: '2階北在院数',
+			FLOOR_2_NORTH_AVERAGE_STAY: '2階北平均在院日数',
+			FLOOR_2_SOUTH_INPATIENT: '2階南在院数',
+			FLOOR_2_SOUTH_AVERAGE_STAY: '2階南平均在院日数',
+			FLOOR_3_INPATIENT: '3階在院数',
+			FLOOR_3_AVERAGE_STAY: '3階平均在院日数',
+			FLOOR_4_INPATIENT: '4階在院数',
+			FLOOR_4_NORTH_AVERAGE_STAY: '4階北平均在院日数',
+			FLOOR_5_INPATIENT: '5階在院数',
+			FLOOR_5_AVERAGE_STAY: '5階平均在院日数',
+		};
+
+		const TREND_DAYS = 14;
 
 		const API_URL_KYORITSU =
 			'https://script.google.com/macros/s/AKfycbwor8y2k5p2zXUcIj7rBnyn3Z_V4cTyEgcyGzGnvy_VgAjam2ymmMFJNy0xUvnTuzjt/exec';
@@ -274,7 +293,9 @@ const DATA_FIELD_REHA = {
 		const rehaDateElement = document.querySelector('#reha-target-date');
 		const rehaStatusElement = document.querySelector('#reha-status');
 
-		async function fetchLatestKyoritsuData() {
+		// 行配列を返す取得処理と、そこから用途別（直近1件 / 直近14日分）に
+		// 整形する処理を分離する。両方の用途で同じAPIレスポンスを使い回すため。
+		async function fetchKyoritsuRows() {
 			const response = await fetch(API_URL_KYORITSU);
 
 			if (!response.ok) {
@@ -288,10 +309,14 @@ const DATA_FIELD_REHA = {
 				throw new Error('No data rows');
 			}
 
+			return rows;
+		}
+
+		function getLatestKyoritsuRow(rows) {
 			return rows[rows.length - 1];
 		}
 
-		async function fetchLatestRehaData() {
+		async function fetchRehaRows() {
 			const response = await fetch(API_URL_REHA);
 
 			if (!response.ok) {
@@ -305,15 +330,77 @@ const DATA_FIELD_REHA = {
 				throw new Error('No reha data rows');
 			}
 
-			const latestDate = rows.reduce((latest, row) => {
+			return rows;
+		}
+
+		function getLatestRehaDate(rows) {
+			return rows.reduce((latest, row) => {
 				const date = row[REHA_RESPONSE_FIELD.DATE];
 				return typeof date === 'string' && date > latest ? date : latest;
 			}, '');
+		}
+
+		function getLatestRehaRows(rows) {
+			const latestDate = getLatestRehaDate(rows);
 
 			return {
 				date: latestDate,
 				rows: rows.filter((row) => row[REHA_RESPONSE_FIELD.DATE] === latestDate),
 			};
+		}
+
+		// APIの日付（UTC ISO文字列）をAsia/Tokyoの暦日（YYYY-MM-DD）に変換する。
+		// sv-SEロケールはYYYY-MM-DD形式を返すため、ここではその副作用を利用する。
+		function toTokyoDateKey(value) {
+			const date = new Date(value);
+			if (Number.isNaN(date.getTime())) {
+				return null;
+			}
+			return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Tokyo' }).format(date);
+		}
+
+		// 最新日を含む直近days日分の暦日を作り、値が無い日はnullのまま残す。
+		// 前日値での補間や0埋めはせず、「データなし」を後段の描画で明示するため。
+		function buildDailySeries(latestDateKey, days, valueByDate) {
+			if (!latestDateKey) {
+				return [];
+			}
+
+			const series = [];
+			const base = new Date(`${latestDateKey}T00:00:00Z`);
+
+			for (let i = days - 1; i >= 0; i -= 1) {
+				const d = new Date(base);
+				d.setUTCDate(d.getUTCDate() - i);
+				const key = d.toISOString().slice(0, 10);
+				series.push({ date: key, value: valueByDate.has(key) ? valueByDate.get(key) : null });
+			}
+
+			return series;
+		}
+
+		function getKyoritsuBedUsageSeries(rows, days = TREND_DAYS) {
+			const byDate = new Map();
+			for (const row of rows) {
+				const key = toTokyoDateKey(row[DATA_FIELD_KYORITSU.DATE]);
+				if (key) {
+					byDate.set(key, row[DATA_FIELD_KYORITSU.BED_USAGE]);
+				}
+			}
+
+			const latestKey = toTokyoDateKey(getLatestKyoritsuRow(rows)[DATA_FIELD_KYORITSU.DATE]);
+			return buildDailySeries(latestKey, days, byDate);
+		}
+
+		function getRehaBedUsageSeries(rows, days = TREND_DAYS) {
+			const byDate = new Map();
+			for (const row of rows) {
+				if (row[REHA_RESPONSE_FIELD.PATH] === '/reha' && row[REHA_RESPONSE_FIELD.LABEL] === DATA_FIELD_REHA.BED_USAGE) {
+					byDate.set(row[REHA_RESPONSE_FIELD.DATE], row[REHA_RESPONSE_FIELD.VALUE]);
+				}
+			}
+
+			return buildDailySeries(getLatestRehaDate(rows), days, byDate);
 		}
 
 		function setKyoritsuValue(id, text) {
@@ -372,6 +459,125 @@ const DATA_FIELD_REHA = {
 			}
 		}
 
+		function clearTrendChart(svgId) {
+			select(`#${svgId}`).selectAll('*').remove();
+		}
+
+		// SVGサイズ・余白・Y軸開始値など、見た目に関わる設定は
+		// この1関数に集約し、両施設のグラフで必ず同一になるようにする。
+		const TREND_CHART_WIDTH = 320;
+		const TREND_CHART_HEIGHT = 120;
+		const TREND_CHART_MARGIN = { top: 10, right: 10, bottom: 20, left: 34 };
+		const TREND_Y_MIN = 0.6; // 病床利用率のY軸は60%から開始する
+
+		// 施設ごとに実データの上限までスケールする（下限は両施設共通で60%固定）。
+		// 欠測日は前日値で補間せず、×印＋title属性で「データなし」と明示する。
+		function renderBedUsageTrend(svgId, series) {
+			const svg = select(`#${svgId}`);
+			svg.selectAll('*').remove();
+
+			const width = TREND_CHART_WIDTH;
+			const height = TREND_CHART_HEIGHT;
+			const margin = TREND_CHART_MARGIN;
+			const innerWidth = width - margin.left - margin.right;
+			const innerHeight = height - margin.top - margin.bottom;
+
+			const values = series.map((d) => d.value).filter((v) => v != null);
+
+			if (values.length === 0) {
+				svg
+					.append('text')
+					.attr('class', 'trend-chart-empty')
+					.attr('x', width / 2)
+					.attr('y', height / 2)
+					.attr('text-anchor', 'middle')
+					.text('データなし');
+				return;
+			}
+
+			const maxValue = Math.max(...values);
+			const yMax = Math.min(1, Math.max(maxValue + 0.02, TREND_Y_MIN + 0.02));
+
+			const x = scalePoint()
+				.domain(series.map((d) => d.date))
+				.range([0, innerWidth]);
+
+			const y = scaleLinear().domain([TREND_Y_MIN, yMax]).range([innerHeight, 0]);
+
+			const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
+
+			// グリッド線は表示せず、Y軸のラベルとその位置を示す短い目盛りのみ描く。
+			const yTicks = y.ticks(3);
+			g.selectAll('.trend-y-tick')
+				.data(yTicks)
+				.join('line')
+				.attr('class', 'trend-y-tick')
+				.attr('x1', -3)
+				.attr('x2', 0)
+				.attr('y1', (d) => y(d))
+				.attr('y2', (d) => y(d));
+
+			g.selectAll('.trend-y-label')
+				.data(yTicks)
+				.join('text')
+				.attr('class', 'trend-y-label')
+				.attr('x', -6)
+				.attr('y', (d) => y(d))
+				.attr('dominant-baseline', 'middle')
+				.attr('text-anchor', 'end')
+				.text((d) => `${(d * 100).toFixed(0)}%`);
+
+			const tickDates = series.filter((_, i) => i % 3 === 0 || i === series.length - 1).map((d) => d.date);
+			g.selectAll('.trend-x-label')
+				.data(tickDates)
+				.join('text')
+				.attr('class', 'trend-x-label')
+				.attr('x', (d) => x(d))
+				.attr('y', innerHeight + 14)
+				.attr('text-anchor', 'middle')
+				.text((d) => {
+					const date = new Date(`${d}T00:00:00Z`);
+					return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
+				});
+
+			const lineGenerator = line()
+				.defined((d) => d.value != null)
+				.x((d) => x(d.date))
+				.y((d) => y(d.value));
+
+			g.append('path').datum(series).attr('class', 'trend-line').attr('d', lineGenerator);
+
+			const points = g
+				.selectAll('.trend-point')
+				.data(series.filter((d) => d.value != null))
+				.join('circle')
+				.attr('class', 'trend-point')
+				.attr('cx', (d) => x(d.date))
+				.attr('cy', (d) => y(d.value))
+				.attr('r', 3);
+
+			// ツールチップはブラウザ標準のtitle属性（ホバーで日付・値を表示）で対応する。
+			points
+				.append('title')
+				.text((d) => `${formatTrendDate(d.date)}: ${(d.value * 100).toFixed(1)}%`);
+
+			const missing = g
+				.selectAll('.trend-missing')
+				.data(series.filter((d) => d.value == null))
+				.join('g')
+				.attr('class', 'trend-missing')
+				.attr('transform', (d) => `translate(${x(d.date)},${innerHeight / 2})`);
+
+			missing.append('title').text((d) => `${formatTrendDate(d.date)}: データなし`);
+			missing.append('line').attr('x1', -4).attr('y1', -4).attr('x2', 4).attr('y2', 4);
+			missing.append('line').attr('x1', -4).attr('y1', 4).attr('x2', 4).attr('y2', -4);
+		}
+
+		function formatTrendDate(dateKey) {
+			const date = new Date(`${dateKey}T00:00:00Z`);
+			return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
+		}
+
 		function renderKyoritsuError() {
 			for (const { id } of KPI_CONFIGS_KYORITSU) {
 				setKyoritsuValue(id, '--');
@@ -383,6 +589,7 @@ const DATA_FIELD_REHA = {
 			if (kyoritsuStatusElement) {
 				kyoritsuStatusElement.textContent = 'データを取得できませんでした';
 			}
+			clearTrendChart('kyoritsu-bed-usage-chart');
 		}
 
 		function renderRehaError() {
@@ -396,12 +603,14 @@ const DATA_FIELD_REHA = {
 			if (rehaStatusElement) {
 				rehaStatusElement.textContent = 'データを取得できませんでした';
 			}
+			clearTrendChart('reha-bed-usage-chart');
 		}
 
 		async function loadKyoritsuKpis() {
 			try {
-				const latest = await fetchLatestKyoritsuData();
-				renderKyoritsuKpis(latest);
+				const rows = await fetchKyoritsuRows();
+				renderKyoritsuKpis(getLatestKyoritsuRow(rows));
+				renderBedUsageTrend('kyoritsu-bed-usage-chart', getKyoritsuBedUsageSeries(rows));
 			} catch (error) {
 				console.error('Kyoritsu KPI fetch/render failed:', error);
 				renderKyoritsuError();
@@ -410,8 +619,9 @@ const DATA_FIELD_REHA = {
 
 		async function loadRehaKpis() {
 			try {
-				const latest = await fetchLatestRehaData();
-				renderRehaKpis(latest);
+				const rows = await fetchRehaRows();
+				renderRehaKpis(getLatestRehaRows(rows));
+				renderBedUsageTrend('reha-bed-usage-chart', getRehaBedUsageSeries(rows));
 			} catch (error) {
 				console.error('Reha KPI fetch/render failed:', error);
 				renderRehaError();
@@ -530,5 +740,45 @@ const DATA_FIELD_REHA = {
 		.page {
 			grid-template-columns: 1fr;
 		}
+	}
+
+	.trend-chart {
+		display: block;
+		width: 100%;
+		height: auto;
+		margin-top: 8px;
+	}
+
+	/* D3が実行時にsvg内へ生成する要素にはscoped属性が付かないため:global()が必要 */
+	:global(.trend-chart-empty) {
+		fill: #526070;
+		font-size: 12px;
+	}
+
+	:global(.trend-y-tick) {
+		stroke: #526070;
+		stroke-width: 1;
+	}
+
+	:global(.trend-y-label),
+	:global(.trend-x-label) {
+		fill: #526070;
+		font-size: 8px;
+	}
+
+	:global(.trend-line) {
+		fill: none;
+		stroke: #0a0a0a;
+		stroke-width: 2;
+	}
+
+	:global(.trend-point) {
+		fill: #0a0a0a;
+		cursor: pointer;
+	}
+
+	:global(.trend-missing line) {
+		stroke: #c0392b;
+		stroke-width: 1.5;
 	}
 </style>
