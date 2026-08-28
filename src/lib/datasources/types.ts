@@ -5,7 +5,7 @@ export type KpiValue = string | number | boolean | null | undefined;
 export type DataRow = Record<string, KpiValue>;
 
 type BaseKpiMapping = {
-	/** FacilityKpiBoard が描画する <dd id="..."> と一致させる */
+	/** FacilityKpiTile / FacilityKpiBoard が描画する <dd id="..."> と一致させる */
 	id: string;
 	format?: (value: KpiValue) => string;
 };

@@ -6,7 +6,7 @@ export type KpiBoardItem = {
 	chart?: { id: string; ariaLabel: string };
 };
 
-/** 日付・状態のidは施設idから導く。FacilityKpiBoard と FacilityKpiDataLoader で共有する */
+/** 日付・状態のidは施設idから導く。FacilityKpiTile / FacilityKpiBoard と FacilityKpiDataLoader で共有する */
 export function boardDateId(sourceId: string): string {
 	return `${sourceId}-target-date`;
 }

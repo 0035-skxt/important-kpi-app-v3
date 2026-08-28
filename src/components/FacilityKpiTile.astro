@@ -1,0 +1,227 @@
+---
+import { withBase } from '../lib/base-url';
+import { boardDateId, boardStatusId, type KpiBoardItem } from '../lib/facility-board';
+
+type Props = {
+	sourceId: string;
+	label: string;
+	items: KpiBoardItem[];
+	href: string;
+};
+
+const { sourceId, label, items, href } = Astro.props;
+---
+
+<a class="kpi kpi--linked" aria-live="polite" href={withBase(href)} aria-label={`${label}を開く`}>
+	<header class="kpi-head">
+		<h1 class="label">{label}</h1>
+		<span class="kpi-hint" aria-hidden="true">詳細を見る ›</span>
+	</header>
+
+	<dl class="kpi-grid quiet-scroll">
+		{
+			items.map((item) => (
+				<div class:list={['kpi-row', { 'kpi-row--primary': item.isPrimary }]}>
+					<dt>{item.label}</dt>
+					<dd id={item.id} class:list={[{ value: item.isPrimary }]}>
+						取得中...
+					</dd>
+					{
+						item.chart && (
+							<svg
+								id={item.chart.id}
+								class="trend-chart"
+								viewBox="0 0 320 120"
+								preserveAspectRatio="xMidYMid meet"
+								role="img"
+								aria-label={item.chart.ariaLabel}
+							/>
+						)
+					}
+				</div>
+			))
+		}
+	</dl>
+
+	<p id={boardDateId(sourceId)} class="date">日付: --</p>
+	<p id={boardStatusId(sourceId)} class="status">APIから最新データを取得しています</p>
+</a>
+
+<style>
+	/*
+	 * パネル自身をコンテナにする。中の文字サイズがパネル幅に追従するので、
+	 * グリッドに入れても個別ページに置いても同じ基準で決まる。
+	 * size ではなく inline-size にすること。高さが決まらない配置でも働く。
+	 */
+	.kpi {
+		container-type: inline-size;
+		position: relative;
+		display: flex;
+		flex-direction: column;
+		box-sizing: border-box;
+		width: 100%;
+		height: 100%;
+		border-radius: var(--panel-radius);
+		color: inherit;
+		text-align: center;
+		text-decoration: none;
+		transition: background-color 160ms ease;
+	}
+
+	.label,
+	.date,
+	.status {
+		margin: 0;
+		color: #526070;
+	}
+
+	.kpi-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: baseline;
+		justify-content: center;
+		gap: 4px 12px;
+	}
+
+	.label {
+		font-size: 18px;
+		font-weight: 700;
+	}
+
+	/*
+	 * タッチ端末には hover が無く、パネルが押せることに気づけない。
+	 * hover の背景変化だけに頼らず、常に見える手がかりを置く。
+	 */
+	.kpi-hint {
+		color: #526070;
+		font-size: 14px;
+		font-weight: 700;
+		text-decoration: underline;
+		text-underline-offset: 3px;
+	}
+
+	.kpi-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		align-items: start;
+		gap: var(--panel-padding);
+		padding: var(--panel-padding);
+	}
+
+	.kpi-row {
+		align-self: stretch;
+		background: var(--panel-surface);
+		border-radius: var(--panel-radius);
+		padding: 12px 6px;
+	}
+
+	.kpi-row--primary {
+		grid-column: 1 / -1;
+		background: transparent;
+		padding: 0;
+	}
+
+	.kpi--linked {
+		cursor: pointer;
+	}
+
+	/* hover が無い端末で :hover を当てるとタップ後に残る。当たる端末だけに限定する */
+	@media (hover: hover) {
+		.kpi--linked:hover {
+			background: #f0f2f4;
+		}
+	}
+
+	.kpi--linked:focus-visible {
+		background: #f0f2f4;
+		outline: 3px solid #0a0a0a;
+		outline-offset: 4px;
+	}
+
+	dt {
+		font-size: 18px;
+		font-weight: 700;
+		line-height: 1.4;
+	}
+
+	dd {
+		margin: 6px 0 0;
+		font-size: 24px;
+		font-weight: 700;
+		line-height: 1.2;
+	}
+
+	/*
+	 * ビューポート幅(vw)ではなくパネル幅(cqi)を基準にする。
+	 * vw だと分割数を変えても文字が縮まず、セルからあふれる。
+	 * コンテナは PanelGrid 側が container-type: inline-size で作る。
+	 * グリッドの外ではビューポート幅にフォールバックする。
+	 */
+	.value {
+		margin: 24px 0;
+		font-size: clamp(40px, 26cqi, 160px);
+		font-weight: 800;
+		line-height: 1;
+	}
+
+	/*
+	 * 分割表示ではセルの高さが決まるので、入り切らない項目はパネル内で送る。
+	 * パネルごと切り落とすと値が読めなくなる。
+	 */
+	@media (min-width: 1024px) {
+		.kpi-grid {
+			min-height: 0;
+			overflow: auto;
+			overscroll-behavior: contain;
+		}
+	}
+
+	.date {
+		font-size: 16px;
+	}
+
+	.status {
+		margin-top: 8px;
+		font-size: 14px;
+	}
+
+	.trend-chart {
+		display: block;
+		width: 100%;
+		height: auto;
+		margin-top: 8px;
+	}
+
+	/* D3が実行時にsvg内へ生成する要素にはscoped属性が付かないため:global()が必要 */
+	:global(.trend-chart-empty) {
+		fill: #526070;
+		font-size: 12px;
+	}
+
+	:global(.trend-y-tick) {
+		stroke: #526070;
+		stroke-width: 1;
+	}
+
+	:global(.trend-y-label),
+	:global(.trend-x-label) {
+		fill: #526070;
+		font-size: 8px;
+	}
+
+	:global(.trend-line) {
+		fill: none;
+		stroke: #0a0a0a;
+		stroke-width: 2;
+	}
+
+	:global(.trend-point) {
+		fill: #0a0a0a;
+		cursor: pointer;
+	}
+
+	:global(.trend-missing line) {
+		stroke: #c0392b;
+		stroke-width: 1.5;
+	}
+</style>

@@ -1,30 +1,21 @@
 ---
-import { withBase } from '../lib/base-url';
 import { boardDateId, boardStatusId, type KpiBoardItem } from '../lib/facility-board';
 
 type Props = {
 	sourceId: string;
 	label: string;
 	items: KpiBoardItem[];
-	href?: string;
 };
 
-const { sourceId, label, items, href } = Astro.props;
-const Root = href ? 'a' : 'section';
-const rootProps = href ? { href: withBase(href), 'aria-label': `${label}を開く` } : {};
+const { sourceId, label, items } = Astro.props;
 
 /*
  * 主指標（病床利用率）と、それ以外のカードを分けて持つ。
- * 個別ページでは前者が1列目、後者が2列目になる。
+ * 前者が1列目、後者が2列目になる。
  */
 const primaryItem = items.find((item) => item.isPrimary);
 const cardItems = items.filter((item) => !item.isPrimary);
-
-/*
- * リンクになるパネル(トップの分割表示)にタブは置かない。
- * a要素の中にボタンを入れると、リンクとタブでタップが競合する。
- */
-const tabbed = !href && primaryItem !== undefined;
+const tabbed = primaryItem !== undefined;
 
 const primaryPaneId = `${sourceId}-pane-primary`;
 const cardsPaneId = `${sourceId}-pane-cards`;
@@ -32,10 +23,9 @@ const primaryTabId = `${sourceId}-tab-primary`;
 const cardsTabId = `${sourceId}-tab-cards`;
 ---
 
-<Root class:list={['kpi', { 'kpi--linked': href, 'kpi--tabbed': tabbed }]} aria-live="polite" {...rootProps}>
+<section class:list={['kpi', { 'kpi--tabbed': tabbed }]} aria-live="polite">
 	<header class="kpi-head">
 		<h1 class="label">{label}</h1>
-		{href && <span class="kpi-hint" aria-hidden="true">詳細を見る ›</span>}
 	</header>
 
 	{
@@ -107,7 +97,7 @@ const cardsTabId = `${sourceId}-tab-cards`;
 
 	<p id={boardDateId(sourceId)} class="date">日付: --</p>
 	<p id={boardStatusId(sourceId)} class="status">APIから最新データを取得しています</p>
-</Root>
+</section>
 
 <script>
 	/*
@@ -249,20 +239,8 @@ const cardsTabId = `${sourceId}-tab-cards`;
 	}
 
 	/*
-	 * タッチ端末には hover が無く、パネルが押せることに気づけない。
-	 * hover の背景変化だけに頼らず、常に見える手がかりを置く。
-	 */
-	.kpi-hint {
-		color: #526070;
-		font-size: 14px;
-		font-weight: 700;
-		text-decoration: underline;
-		text-underline-offset: 3px;
-	}
-
-	/*
-	 * 既定は1列。主指標の下にカードが続く形で、トップの分割パネルはこのまま使う。
-	 * 個別ページ(.kpi--tabbed)だけを、広い画面で2列に組み替える。
+	 * 既定は1列。主指標の下にカードが続く形で、狭い画面ではこのまま使う。
+	 * 広い画面(.kpi--tabbed)だけ2列に組み替える。
 	 */
 	.kpi-body {
 		display: grid;
@@ -304,23 +282,6 @@ const cardsTabId = `${sourceId}-tab-cards`;
 		padding: 12px 6px;
 	}
 
-	.kpi--linked {
-		cursor: pointer;
-	}
-
-	/* hover が無い端末で :hover を当てるとタップ後に残る。当たる端末だけに限定する */
-	@media (hover: hover) {
-		.kpi--linked:hover {
-			background: #f0f2f4;
-		}
-	}
-
-	.kpi--linked:focus-visible {
-		background: #f0f2f4;
-		outline: 3px solid #0a0a0a;
-		outline-offset: 4px;
-	}
-
 	dt {
 		font-size: 18px;
 		font-weight: 700;
@@ -346,19 +307,7 @@ const cardsTabId = `${sourceId}-tab-cards`;
 		line-height: 1;
 	}
 
-	/*
-	 * 分割表示ではセルの高さが決まるので、入り切らない項目はパネル内で送る。
-	 * パネルごと切り落とすと値が読めなくなる。
-	 */
-	@media (min-width: 1024px) {
-		.kpi--linked .kpi-body {
-			min-height: 0;
-			overflow: auto;
-			overscroll-behavior: contain;
-		}
-	}
-
-	/* --- 個別ページ: 広い画面は2列、狭い画面はタブで1列ずつ --- */
+	/* --- 広い画面は2列、狭い画面はタブで1列ずつ --- */
 
 	.kpi-tabs {
 		display: flex;
