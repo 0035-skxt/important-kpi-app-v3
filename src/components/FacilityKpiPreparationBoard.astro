@@ -1,0 +1,64 @@
+---
+type Props = {
+	label: string;
+};
+
+const { label } = Astro.props;
+---
+
+<section class="kpi kpi--preparation" aria-label={`${label}（準備中）`}>
+	<header class="kpi-head">
+		<h1 class="label">{label}</h1>
+	</header>
+
+	<p class="preparation">準備中</p>
+</section>
+
+<style>
+	/*
+	 * 稼働中のパネル(FacilityKpiBoard)と同じ骨格にする。
+	 * グリッドの1枠として同じ大きさ・同じ余白で並ぶことが前提。
+	 */
+	.kpi {
+		container-type: inline-size;
+		display: flex;
+		flex-direction: column;
+		box-sizing: border-box;
+		width: 100%;
+		height: 100%;
+		border-radius: var(--panel-radius);
+		color: inherit;
+		text-align: center;
+	}
+
+	.kpi-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: center;
+	}
+
+	.label {
+		margin: 0;
+		color: #526070;
+		font-size: 18px;
+		font-weight: 700;
+	}
+
+	/*
+	 * 残りの高さを全部使って中央に置く。
+	 * 稼働中のパネルより弱く見せ、データが無いことを見た目で分からせる。
+	 */
+	.preparation {
+		display: flex;
+		flex: 1;
+		align-items: center;
+		justify-content: center;
+		min-height: 0;
+		margin: 0;
+		padding: var(--panel-padding);
+		color: #8a95a1;
+		font-size: clamp(24px, 12cqi, 72px);
+		font-weight: 700;
+		line-height: 1;
+	}
+</style>

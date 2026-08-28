@@ -2,6 +2,13 @@
 import { withBase } from '../lib/base-url';
 import '../styles/global.css';
 
+type Props = {
+	/** メイン領域をウィンドウいっぱいに広げる。トップページの分割表示用 */
+	fill?: boolean;
+};
+
+const { fill = false } = Astro.props;
+
 const appTitle = '重要指標ダッシュボード';
 ---
 
@@ -24,7 +31,7 @@ const appTitle = '重要指標ダッシュボード';
 			</header>
 		</div>
 
-		<main class="app-main">
+		<main class:list={['app-main', 'quiet-scroll', { 'app-main--fill': fill }]}>
 			<slot />
 		</main>
 
@@ -33,6 +40,30 @@ const appTitle = '重要指標ダッシュボード';
 				<small>院内確認用</small>
 			</footer>
 		</div>
+		<script>
+			// スクロール中だけ .is-scrolling を付ける。止まってしばらくしたら外す。
+			// scroll はバブリングしないため、キャプチャ段階で拾って全領域を1つで賄う。
+			const HIDE_DELAY_MS = 800;
+			const timers = new WeakMap<Element, number>();
+
+			document.addEventListener(
+				'scroll',
+				(event) => {
+					const target = event.target;
+					if (!(target instanceof Element) || !target.classList.contains('quiet-scroll')) {
+						return;
+					}
+
+					target.classList.add('is-scrolling');
+					clearTimeout(timers.get(target));
+					timers.set(
+						target,
+						window.setTimeout(() => target.classList.remove('is-scrolling'), HIDE_DELAY_MS),
+					);
+				},
+				true,
+			);
+		</script>
 	</body>
 </html>
 
@@ -42,6 +73,12 @@ const appTitle = '重要指標ダッシュボード';
 		--app-footer-frame-height: 36px;
 		--app-footer-height: 24px;
 		--app-content-padding: 16px;
+		/*
+		 * ウィンドウ端とコンテンツの間の枠。四辺とも同じ値にする。
+		 * ヘッダー/フッターの帯より小さくすると、帯がコンテンツのクリックを吸う。
+		 * よって --app-header-height と --app-footer-frame-height のどちらより大きく保つこと。
+		 */
+		--app-frame: 40px;
 	}
 
 	html,
@@ -149,12 +186,38 @@ const appTitle = '重要指標ダッシュボード';
 		opacity: 0;
 	}
 
+	/*
+	 * 広い画面でだけメイン領域をウィンドウいっぱいに広げる。
+	 * 枠はここが一手に持つ。中身(PanelGrid等)は四辺の余白を足さないこと。
+	 * 両方が持つと上下だけ二重になり、左右と揃わなくなる。
+	 */
+	@media (min-width: 1024px) {
+		.app-main--fill {
+			top: 0;
+			bottom: 0;
+			padding: var(--app-frame);
+			overflow: hidden;
+		}
+	}
+
 	.app-chrome--header:hover .app-header,
 	.app-chrome--header:focus .app-header,
 	.app-chrome--header:focus-within .app-header,
 	.app-chrome--footer:hover .app-footer {
 		opacity: 1;
 		pointer-events: auto;
+	}
+
+	/*
+	 * タッチ端末には hover が無く、隠れたヘッダー/フッターに到達できない。
+	 * 掲示のように「操作しない前提で余計なUIを消す」意味も無いので常時表示する。
+	 */
+	@media (hover: none) {
+		.app-header,
+		.app-footer {
+			opacity: 1;
+			pointer-events: auto;
+		}
 	}
 
 	@media (max-width: 760px) {

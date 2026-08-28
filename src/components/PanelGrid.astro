@@ -1,0 +1,86 @@
+---
+import {
+	resolvePanelGridColumns,
+	resolvePanelGridSplit,
+	type PanelGridSplit,
+} from '../lib/panel-grid';
+
+type Props = {
+	/** 分割数。4→2×2、9→3×3。columns と rows を直接渡す場合は不要 */
+	split?: number;
+	/** 行と列の数が異なる分割をしたいときに直接指定する */
+	columns?: number;
+	rows?: number;
+};
+
+const { split, columns, rows } = Astro.props;
+
+const grid: PanelGridSplit =
+	columns !== undefined && rows !== undefined
+		? { columns, rows }
+		: resolvePanelGridSplit(split ?? 1);
+
+const responsive = resolvePanelGridColumns(grid.columns);
+
+// repeat() に渡す変数が空だと grid-template-columns ごと無効になるため、
+// CSS側にもフォールバック値を書いている。
+const gridVars = [
+	`--panel-grid-columns-wide: ${responsive.wide}`,
+	`--panel-grid-columns-medium: ${responsive.medium}`,
+	`--panel-grid-columns-narrow: ${responsive.narrow}`,
+	`--panel-grid-rows: ${grid.rows}`,
+].join('; ');
+---
+
+<div class="panel-grid" style={gridVars}>
+	<slot />
+</div>
+
+<style>
+	/* 狭い画面は分割せず縦に積み、ページの自然なスクロールに任せる */
+	.panel-grid {
+		display: grid;
+		grid-template-columns: repeat(var(--panel-grid-columns-narrow, 1), minmax(0, 1fr));
+		box-sizing: border-box;
+		width: 100%;
+		gap: var(--panel-gap);
+		padding: var(--panel-gap);
+	}
+
+	@media (min-width: 601px) {
+		.panel-grid {
+			grid-template-columns: repeat(var(--panel-grid-columns-medium, 2), minmax(0, 1fr));
+		}
+	}
+
+	/*
+	 * 広い画面でだけ、指定どおりの分割をウィンドウいっぱいに敷く。
+	 * 四辺の枠は外側(.app-main--fill)が持つので、ここでは持たない。
+	 * 両方が持つと上下だけ二重になり、左右と揃わなくなる。
+	 */
+	@media (min-width: 1024px) {
+		.panel-grid {
+			grid-template-columns: repeat(var(--panel-grid-columns-wide, 2), minmax(0, 1fr));
+			grid-template-rows: repeat(var(--panel-grid-rows, 2), minmax(0, 1fr));
+			height: 100%;
+			padding: 0;
+		}
+	}
+
+	/*
+	 * slotで受け取る中身は呼び出し側ページのスコープを持つため :global() が要る。
+	 * container-type はインライン軸だけにする。size にすると高さが確定していない
+	 * 積み上げ時にコンテナクエリが働かなくなる。
+	 */
+	.panel-grid > :global(*) {
+		min-width: 0;
+		container-type: inline-size;
+	}
+
+	@media (min-width: 1024px) {
+		.panel-grid > :global(*) {
+			min-height: 0;
+			overflow: hidden;
+		}
+	}
+</style>
