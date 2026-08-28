@@ -8,10 +8,10 @@
   },
   "scripts": {
     "dev": "astro dev",
-    "build": "pnpm run check:paths && pnpm run check:kpi-ids && astro build",
+    "build": "pnpm run check:paths && pnpm run check:kpi-catalog && astro build",
     "preview": "astro preview",
     "check:paths": "node scripts/check-absolute-paths.mjs",
-    "check:kpi-ids": "node scripts/check-kpi-ids.mjs",
+    "check:kpi-catalog": "node --experimental-strip-types scripts/check-kpi-catalog.mjs",
     "astro": "astro"
   },
   "dependencies": {
