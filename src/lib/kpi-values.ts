@@ -68,12 +68,12 @@ function readWide(source: WideRowDataSource, rows: DataRow[], trendKpiId?: strin
 }
 
 function readLong(source: LongRowDataSource, rows: DataRow[], trendKpiId?: string): ReadResult {
-	const { date, path, label, value } = source.responseFields;
+	const { date, path, label: labelField, value } = source.responseFields;
 	const latest = getLatestLongRows(rows, date);
 	const values = new Map<string, string>();
 
 	for (const kpi of source.kpis) {
-		const row = latest.rows.find((candidate) => candidate[path] === kpi.path && candidate[label] === kpi.label);
+		const row = latest.rows.find((candidate) => candidate[path] === kpi.path && candidate[labelField] === kpi.matchLabel);
 		values.set(kpi.id, formatKpi(row?.[value], kpi.format));
 	}
 
@@ -82,7 +82,7 @@ function readLong(source: LongRowDataSource, rows: DataRow[], trendKpiId?: strin
 
 	if (trendKpi) {
 		for (const row of rows) {
-			if (row[path] !== trendKpi.path || row[label] !== trendKpi.label) {
+			if (row[path] !== trendKpi.path || row[labelField] !== trendKpi.matchLabel) {
 				continue;
 			}
 

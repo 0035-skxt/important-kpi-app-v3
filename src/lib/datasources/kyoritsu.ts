@@ -1,7 +1,11 @@
 import { formatBedUsageRatio } from './format';
 import type { WideRowDataSource } from './types';
 
-/** 共立API: 1日分が1行、KPIは列として横に並ぶ */
+/**
+ * 共立API: 1日分が1行、KPIは列として横に並ぶ。
+ * kpis[].field は API 応答の列名であり画面の見出しではない
+ * （例: '病床利用率 (%)'）。画面の見出しは facility-board.ts が持つ。
+ */
 export const kyoritsuDataSource: WideRowDataSource = {
 	id: 'kyoritsu',
 	layout: 'wide',

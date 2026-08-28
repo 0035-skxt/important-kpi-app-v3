@@ -1,46 +1,28 @@
-# Astro Starter Kit: Basics
+# important-kpi-app-v3
+
+4施設の重要KPIを1画面で見る、院内掲示用のダッシュボード。
+
+## 何のアプリか
+
+トップページは2x2のタイルで4施設を並べる。施設ページ（`kyoritsu` / `reha`）はKPI盤を2列（主指標＋指標一覧）で表示し、モバイル幅ではタブ切替で片方ずつ表示する。ページはトップ＋施設4つ（`kyoritsu` / `reha` / `ayame` / `meijimachi`）の計5つ。`ayame` / `meijimachi` はまだデータ連携前のため `FacilityKpiPreparationBoard`（準備中表示）を使っている。
+
+## データの出どころ
+
+施設ごとにGoogle Apps Script（GAS）のWebアプリから取得する。共立は1日1行にKPIが列として並ぶ横持ち形式、リハは1KPI1行の縦持ち形式で、形式が異なる。データソースの定義（フィールド名・KPI一覧・取得先URLなど）は `src/lib/datasources/` に集約している。取得先のexec URLは認証の無い医療データ取得口のため、ここには転記しない。実際のURLは各データソースファイルを参照すること。
+
+## ローカルでの動かし方
 
 ```sh
-pnpm create astro@latest -- --template basics
+pnpm install
+pnpm dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+dev サーバはバックグラウンドで動かす運用にしている。起動・停止・ログの見方は `AGENTS.md` の Development 節を参照。
 
-## 🚀 Project Structure
+## 公開の仕組み
 
-Inside of your Astro project, you'll see the following folders and files:
+GitHub Pages はリポジトリ名を含むサブパスで配信されるため、`astro.config.mjs` で `site` と `base: '/important-kpi-app-v3'` の両方を指定している。この構成では静的アセットへのリンクを `/favicon.svg` のように絶対パスで直書きすると公開先で壊れるため、必ず `src/lib/base-url.ts` の `withBase()` を経由して組み立てる。`pnpm build` はこの直書きが無いことを機械的に検査してからビルドする。
 
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src
-│   ├── assets
-│   │   └── astro.svg
-│   ├── components
-│   │   └── Welcome.astro
-│   ├── layouts
-│   │   └── Layout.astro
-│   └── pages
-│       └── index.astro
-└── package.json
-```
+## ブランチ運用
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
-| `pnpm dev`             | Starts local dev server at `localhost:4321`      |
-| `pnpm build`           | Build your production site to `./dist/`          |
-| `pnpm preview`         | Preview your build locally, before deploying     |
-| `pnpm astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `pnpm astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+`main` / `develop` / `feature/*` などの運用ルールは `AGENTS.md` の Branch Rules を参照。ここには二重管理しない。

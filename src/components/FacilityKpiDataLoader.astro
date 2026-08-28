@@ -15,6 +15,12 @@
 		if (element) {
 			element.textContent = text;
 		}
+
+		// 主指標は1列目と指標一覧の両方に出る。id は文書内で1つしか置けないため、
+		// 控えの側は data-kpi で拾って同じ文字列を書く。
+		for (const mirror of document.querySelectorAll(`[data-kpi="${id}"]`)) {
+			mirror.textContent = text;
+		}
 	}
 
 	async function load({ source, items }) {

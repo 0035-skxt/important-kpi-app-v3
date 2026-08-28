@@ -1,33 +1,19 @@
 ---
-import FacilityKpiBoard from '../components/FacilityKpiBoard.astro';
 import FacilityKpiDataLoader from '../components/FacilityKpiDataLoader.astro';
+import FacilityKpiPreparationBoard from '../components/FacilityKpiPreparationBoard.astro';
+import FacilityKpiTile from '../components/FacilityKpiTile.astro';
+import PanelGrid from '../components/PanelGrid.astro';
 import Layout from '../layouts/Layout.astro';
 import { kyoritsuBoardItems, rehaBoardItems } from '../lib/facility-board';
 ---
 
-<Layout>
-	<div class="page">
-		<div class="layout">
-			<FacilityKpiBoard sourceId="kyoritsu" label="戸畑共立病院" items={kyoritsuBoardItems} href="kyoritsu" />
-			<FacilityKpiBoard sourceId="reha" label="戸畑リハビリテーション病院" items={rehaBoardItems} href="reha" />
-		</div>
-	</div>
+<Layout fill>
+	<PanelGrid split={4}>
+		<FacilityKpiTile sourceId="kyoritsu" label="戸畑共立病院" items={kyoritsuBoardItems} href="kyoritsu" />
+		<FacilityKpiTile sourceId="reha" label="戸畑リハビリテーション病院" items={rehaBoardItems} href="reha" />
+		<FacilityKpiPreparationBoard label="あやめの里" href="ayame" />
+		<FacilityKpiPreparationBoard label="明治町クリニック" href="meijimachi" />
+	</PanelGrid>
 
 	<FacilityKpiDataLoader />
 </Layout>
-
-<style>
-	.layout {
-		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		align-items: start;
-		gap: 24px;
-	}
-
-	@media (max-width: 760px) {
-		.layout {
-			grid-template-columns: 1fr;
-			gap: 16px;
-		}
-	}
-</style>

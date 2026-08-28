@@ -28,4 +28,5 @@ Consult these guides before working on related tasks:
 - feature/* は develop から作成し、develop へMRする。
 - release/* は develop から作成し、main と develop へ戻す。
 - hotfix/* は main から作成し、main と develop へ戻す。
-- main / develop への変更前に pnpm check, pnpm test, pnpm build を確認する。
+- main / develop への変更前に pnpm build を確認する（絶対パス検査と KPI id 検査を含む）。
+- pnpm check（astro check）と pnpm test は未整備。導入には依存追加の判断が要るため、当面は努力目標。

@@ -1,0 +1,90 @@
+---
+import { withBase } from '../lib/base-url';
+
+type Props = {
+	label: string;
+	href?: string;
+};
+
+const { label, href } = Astro.props;
+const Root = href ? 'a' : 'section';
+const rootProps = href
+	? { href: withBase(href), 'aria-label': `${label}（準備中）を開く` }
+	: { 'aria-label': `${label}（準備中）` };
+---
+
+<Root class:list={['kpi', 'kpi--preparation', { 'kpi--linked': href }]} {...rootProps}>
+	<header class="kpi-head">
+		<h1 class="label">{label}</h1>
+	</header>
+
+	<p class="preparation">準備中</p>
+</Root>
+
+<style>
+	/*
+	 * 稼働中のパネル(FacilityKpiBoard)と同じ骨格にする。
+	 * グリッドの1枠として同じ大きさ・同じ余白で並ぶことが前提。
+	 */
+	.kpi {
+		container-type: inline-size;
+		display: flex;
+		flex-direction: column;
+		box-sizing: border-box;
+		width: 100%;
+		height: 100%;
+		border-radius: var(--panel-radius);
+		color: inherit;
+		text-align: center;
+		text-decoration: none;
+		transition: background-color 160ms ease;
+	}
+
+	.kpi--linked {
+		cursor: pointer;
+	}
+
+	/* hover が無い端末で :hover を当てるとタップ後に残る。当たる端末だけに限定する */
+	@media (hover: hover) {
+		.kpi--linked:hover {
+			background: #f0f2f4;
+		}
+	}
+
+	.kpi--linked:focus-visible {
+		background: #f0f2f4;
+		outline: 3px solid #0a0a0a;
+		outline-offset: 4px;
+	}
+
+	.kpi-head {
+		display: flex;
+		align-items: baseline;
+		justify-content: center;
+	}
+
+	.label {
+		margin: 0;
+		color: #526070;
+		font-size: 18px;
+		font-weight: 700;
+	}
+
+	/*
+	 * 残りの高さを全部使って中央に置く。
+	 * 稼働中のパネルより弱く見せ、データが無いことを見た目で分からせる。
+	 */
+	.preparation {
+		display: flex;
+		flex: 1;
+		align-items: center;
+		justify-content: center;
+		min-height: 0;
+		margin: 0;
+		padding: var(--panel-padding);
+		color: #8a95a1;
+		font-size: clamp(24px, 12cqi, 72px);
+		font-weight: 700;
+		line-height: 1;
+	}
+</style>
