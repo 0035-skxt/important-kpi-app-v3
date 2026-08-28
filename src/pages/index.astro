@@ -1,11 +1,142 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
 ---
 
 <Layout>
-	<Welcome />
+	<main class="page">
+		<section class="kpi" aria-live="polite">
+			<p class="label">戸畑共立病院</p>
+			<h1>病床利用率</h1>
+			<p id="bed-usage" class="value">取得中...</p>
+			<p id="target-date" class="date">日付: --</p>
+			<p id="status" class="status">APIから最新データを取得しています</p>
+		</section>
+	</main>
+
+	<script>
+
+		const API_URL =
+			'https://script.google.com/macros/s/AKfycbwor8y2k5p2zXUcIj7rBnyn3Z_V4cTyEgcyGzGnvy_VgAjam2ymmMFJNy0xUvnTuzjt/exec';
+		const FIELD_USAGE_RATE = '病床利用率 (%)';
+		const FIELD_DATE = '日付';
+
+		const valueElement = document.querySelector('#bed-usage');
+		const dateElement = document.querySelector('#target-date');
+		const statusElement = document.querySelector('#status');
+
+		async function fetchLatestBedUsage() {
+			try {
+				const response = await fetch(API_URL);
+
+				if (!response.ok) {
+					throw new Error('API request failed');
+				}
+
+				const payload = await response.json();
+				const rows = payload.data;
+
+				if (!Array.isArray(rows) || rows.length === 0) {
+					throw new Error('No data rows');
+				}
+
+				return rows[rows.length - 1];
+			} catch (error) {
+				console.error('bed usage fetch failed:', error);
+				throw error;
+			}
+		}
+
+		async function renderBedUsage(latest) {
+			try {
+				const usageRate = latest[FIELD_USAGE_RATE] * 100;
+
+				if (!Number.isFinite(usageRate)) {
+					throw new Error('Invalid bed usage rate');
+				}
+
+				valueElement.textContent = `${usageRate.toFixed(1)}%`;
+				dateElement.textContent = `日付: ${latest[FIELD_DATE] ?? '--'}`;
+				statusElement.textContent = '最新データを表示しています';
+			} catch (error) {
+				console.error('bed usage render failed:', error);
+				throw error;
+			}
+		}
+
+		function renderError() {
+			valueElement.textContent = '--%';
+			dateElement.textContent = '日付: --';
+			statusElement.textContent = 'データを取得できませんでした';
+		}
+
+		async function loadBedUsage() {
+			try {
+				const latest = await fetchLatestBedUsage();
+				renderBedUsage(latest);
+			} catch (error) {
+				renderError();
+			}
+		}
+
+		loadBedUsage();
+	</script>
 </Layout>
+
+<style>
+	:global(body) {
+		font-family:
+			system-ui,
+			-apple-system,
+			BlinkMacSystemFont,
+			'Segoe UI',
+			sans-serif;
+		color: #172033;
+		background: #f7f9fb;
+	}
+
+	.page {
+		box-sizing: border-box;
+		min-height: 100vh;
+		display: grid;
+		place-items: center;
+		padding: 24px;
+	}
+
+	.kpi {
+		text-align: center;
+	}
+
+	.label,
+	.date,
+	.status {
+		margin: 0;
+		color: #526070;
+	}
+
+	.label {
+		font-size: 18px;
+		font-weight: 700;
+	}
+
+	h1 {
+		margin: 12px 0 0;
+		font-size: 32px;
+		line-height: 1.2;
+	}
+
+	.value {
+		margin: 24px 0;
+		font-size: clamp(64px, 16vw, 160px);
+		font-weight: 800;
+		line-height: 1;
+	}
+
+	.date {
+		font-size: 16px;
+	}
+
+	.status {
+		margin-top: 8px;
+		font-size: 14px;
+	}
+</style>
